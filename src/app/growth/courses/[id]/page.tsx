@@ -6,42 +6,66 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { useState } from 'react';
-
-const demoSegments = Array.from({ length: 30 }, (_, i) => ({
-  id: String(i + 1),
-  segment_number: i + 1,
-  title: `Segment ${i + 1}: ${
-    [
-      'Understanding Self-Image',
-      'The Inner Critic',
-      'Core Beliefs',
-      'Reframing Thoughts',
-      'Self-Compassion',
-      'Setting Boundaries',
-      'Assertive Communication',
-      'Handling Criticism',
-      'Building on Strengths',
-      'Daily Practice',
-    ][i % 10]
-  }`,
-  content: `This is the content for segment ${
-    i + 1
-  }. In a real application, this would contain the actual course material broken down into digestible daily pieces.\n\nKey points:\n- Point one about this topic\n- Point two with practical application\n- Point three connecting to daily life\n\nReflection question: How does this apply to your life today?`,
-  completed: i < 14,
-}));
+import { useState, useEffect } from 'react';
+import { useParams } from 'next/navigation';
+import { useCourseSegments } from '@/lib/hooks';
+import { supabase } from '@/lib/supabase';
 
 export default function CourseDetailPage() {
-  const [segments, setSegments] = useState(demoSegments);
-  const [currentSegment, setCurrentSegment] = useState(14); // first uncompleted
+  const params = useParams();
+  const courseId = params.id as string;
+  const { segments, loading, toggleComplete } = useCourseSegments(courseId);
+  const [courseTitle, setCourseTitle] = useState('Course');
+  const [currentIndex, setCurrentIndex] = useState(0);
 
-  const segment = segments[currentSegment];
+  // Fetch course title
+  useEffect(() => {
+    if (!courseId) return;
+    supabase
+      .from('courses')
+      .select('title')
+      .eq('id', courseId)
+      .single()
+      .then(({ data }) => {
+        if (data) setCourseTitle(data.title);
+      });
+  }, [courseId]);
+
+  // Auto-select first uncompleted segment
+  useEffect(() => {
+    if (segments.length > 0) {
+      const firstUncompleted = segments.findIndex((s) => !s.completed);
+      setCurrentIndex(firstUncompleted >= 0 ? firstUncompleted : 0);
+    }
+  }, [segments.length]); // Only run when segments first load
+
+  const segment = segments[currentIndex];
   const totalCompleted = segments.filter((s) => s.completed).length;
+
+  if (loading) {
+    return (
+      <div className="max-w-3xl mx-auto">
+        <Header title="Loading..." description="" />
+        <p className="text-sm text-slate-400">Loading course segments...</p>
+      </div>
+    );
+  }
+
+  if (segments.length === 0) {
+    return (
+      <div className="max-w-3xl mx-auto">
+        <Header title={courseTitle} description="No segments yet" />
+        <p className="text-sm text-slate-400">
+          This course has no segments yet. Segments can be added by importing course content.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-3xl mx-auto">
       <Header
-        title="Self-Esteem Foundations"
+        title={courseTitle}
         description={`${totalCompleted} of ${segments.length} segments completed`}
       />
 
@@ -50,10 +74,10 @@ export default function CourseDetailPage() {
         {segments.map((s, i) => (
           <button
             key={s.id}
-            onClick={() => setCurrentSegment(i)}
+            onClick={() => setCurrentIndex(i)}
             className={`w-7 h-7 rounded text-xs font-medium transition-colors
               ${
-                i === currentSegment
+                i === currentIndex
                   ? 'bg-blue-600 text-white'
                   : s.completed
                   ? 'bg-green-100 text-green-700'
@@ -71,7 +95,9 @@ export default function CourseDetailPage() {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">{segment.title}</h2>
+              <h2 className="text-lg font-semibold">
+                {segment.title || `Segment ${segment.segment_number}`}
+              </h2>
               <Badge variant={segment.completed ? 'default' : 'outline'}>
                 {segment.completed ? 'Completed' : 'Not done'}
               </Badge>
@@ -89,15 +115,7 @@ export default function CourseDetailPage() {
               <div className="flex items-center gap-2">
                 <Checkbox
                   checked={segment.completed}
-                  onCheckedChange={(checked) => {
-                    setSegments((prev) =>
-                      prev.map((s, i) =>
-                        i === currentSegment
-                          ? { ...s, completed: checked === true }
-                          : s
-                      )
-                    );
-                  }}
+                  onCheckedChange={() => toggleComplete(segment.id)}
                 />
                 <span className="text-sm">Mark as completed</span>
               </div>
@@ -106,17 +124,17 @@ export default function CourseDetailPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setCurrentSegment(Math.max(0, currentSegment - 1))}
-                  disabled={currentSegment === 0}
+                  onClick={() => setCurrentIndex(Math.max(0, currentIndex - 1))}
+                  disabled={currentIndex === 0}
                 >
                   <ChevronLeft size={16} /> Previous
                 </Button>
                 <Button
                   size="sm"
                   onClick={() =>
-                    setCurrentSegment(Math.min(segments.length - 1, currentSegment + 1))
+                    setCurrentIndex(Math.min(segments.length - 1, currentIndex + 1))
                   }
-                  disabled={currentSegment === segments.length - 1}
+                  disabled={currentIndex === segments.length - 1}
                 >
                   Next <ChevronRight size={16} />
                 </Button>

@@ -2,48 +2,25 @@
 
 import Header from '@/components/layout/Header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Flame, BookOpen, Sparkles, Target } from 'lucide-react';
+import { Flame, BookOpen, Target } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
-
-interface RitualItem {
-  id: string;
-  name: string;
-  description: string;
-  category: string;
-  completed: boolean;
-  streak: number;
-}
-
-const demoRituals: RitualItem[] = [
-  { id: '1', name: 'Morning Meditation', description: '10 minutes of mindful breathing', category: 'meditation', completed: false, streak: 12 },
-  { id: '2', name: 'Daily Affirmation', description: 'Read and internalize affirmation card', category: 'affirmation', completed: false, streak: 8 },
-  { id: '3', name: 'Torah Learning', description: 'Minimum 30 minutes focused learning', category: 'learning', completed: false, streak: 45 },
-  { id: '4', name: 'Gratitude Journal', description: 'Write 3 things grateful for', category: 'reflection', completed: false, streak: 5 },
-  { id: '5', name: 'Evening Reflection', description: 'Review the day, what went well, what to improve', category: 'reflection', completed: false, streak: 3 },
-  { id: '6', name: 'Physical Exercise', description: '20+ minutes movement', category: 'exercise', completed: false, streak: 7 },
-];
-
-const demoCourses = [
-  { id: '1', title: 'Self-Esteem Foundations', total: 30, completed: 14, source: 'Course Notes' },
-  { id: '2', title: 'Confidence Building', total: 20, completed: 6, source: 'Workshop' },
-  { id: '3', title: 'Public Speaking Mastery', total: 15, completed: 2, source: 'Eliezer Blatt' },
-];
-
-// Generate a heatmap for the last 90 days
-const heatmapData = Array.from({ length: 90 }, (_, i) => ({
-  date: new Date(Date.now() - (89 - i) * 86400000),
-  count: Math.floor(Math.random() * 7),
-}));
+import { format } from 'date-fns';
+import { useRituals, useRitualCompletions, useCourses } from '@/lib/hooks';
+import AddDialog from '@/components/AddDialog';
 
 export default function GrowthPage() {
-  const [rituals, setRituals] = useState(demoRituals);
-  const completedCount = rituals.filter((r) => r.completed).length;
+  const today = format(new Date(), 'yyyy-MM-dd');
+  const { rituals, loading: ritualsLoading, addRitual } = useRituals();
+  const { completions, toggleCompletion } = useRitualCompletions(today);
+  const { data: courses, loading: coursesLoading } = useCourses();
+
+  const activeRituals = rituals.filter((r) => r.active);
+  const completedRitualIds = new Set(completions.map((c) => c.ritual_id));
+  const completedCount = activeRituals.filter((r) => completedRitualIds.has(r.id)).length;
 
   return (
     <div className="max-w-5xl mx-auto">
@@ -51,9 +28,29 @@ export default function GrowthPage() {
         title="Personal Growth"
         description="Track your daily rituals, courses, and development"
         action={
-          <Button size="sm">
-            <Plus size={16} className="mr-1" /> Add Ritual
-          </Button>
+          <AddDialog
+            title="Add Ritual"
+            buttonLabel="Add Ritual"
+            fields={[
+              { name: 'name', label: 'Name', type: 'text', required: true, placeholder: 'e.g. Morning Meditation' },
+              { name: 'description', label: 'Description', type: 'textarea', placeholder: 'What does this ritual involve?' },
+              {
+                name: 'category',
+                label: 'Category',
+                type: 'select',
+                options: [
+                  { value: 'meditation', label: 'Meditation' },
+                  { value: 'affirmation', label: 'Affirmation' },
+                  { value: 'reflection', label: 'Reflection' },
+                  { value: 'exercise', label: 'Exercise' },
+                  { value: 'learning', label: 'Learning' },
+                ],
+              },
+            ]}
+            onSubmit={async (values) => {
+              return addRitual(values.name, values.description || '', values.category || 'reflection');
+            }}
+          />
         }
       />
 
@@ -71,86 +68,102 @@ export default function GrowthPage() {
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-sm font-semibold">Today&apos;s Progress</h3>
                 <span className="text-sm text-slate-500">
-                  {completedCount} / {rituals.length} completed
+                  {completedCount} / {activeRituals.length} completed
                 </span>
               </div>
-              <Progress value={(completedCount / rituals.length) * 100} className="h-2" />
+              <Progress value={activeRituals.length > 0 ? (completedCount / activeRituals.length) * 100 : 0} className="h-2" />
             </CardContent>
           </Card>
 
           {/* Ritual List */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {rituals.map((ritual) => (
-              <Card key={ritual.id} className={ritual.completed ? 'opacity-60' : ''}>
-                <CardContent className="p-4">
-                  <div className="flex items-start gap-3">
-                    <Checkbox
-                      checked={ritual.completed}
-                      onCheckedChange={(checked) => {
-                        setRituals((prev) =>
-                          prev.map((r) =>
-                            r.id === ritual.id ? { ...r, completed: checked === true } : r
-                          )
-                        );
-                      }}
-                      className="mt-0.5"
-                    />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className={`text-sm font-medium ${ritual.completed ? 'line-through' : ''}`}>
-                          {ritual.name}
-                        </h3>
-                        <Badge variant="outline" className="text-xs">
-                          {ritual.category}
-                        </Badge>
+          {ritualsLoading ? (
+            <p className="text-sm text-slate-400">Loading...</p>
+          ) : activeRituals.length === 0 ? (
+            <p className="text-sm text-slate-400">No rituals yet. Click &quot;Add Ritual&quot; to create one.</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {activeRituals.map((ritual) => {
+                const isCompleted = completedRitualIds.has(ritual.id);
+                return (
+                  <Card key={ritual.id} className={isCompleted ? 'opacity-60' : ''}>
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-3">
+                        <Checkbox
+                          checked={isCompleted}
+                          onCheckedChange={() => toggleCompletion(ritual.id)}
+                          className="mt-0.5"
+                        />
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <h3 className={`text-sm font-medium ${isCompleted ? 'line-through' : ''}`}>
+                              {ritual.name}
+                            </h3>
+                            {ritual.category && (
+                              <Badge variant="outline" className="text-xs">
+                                {ritual.category}
+                              </Badge>
+                            )}
+                          </div>
+                          {ritual.description && (
+                            <p className="text-xs text-slate-500 mt-0.5">{ritual.description}</p>
+                          )}
+                          <div className="flex items-center gap-1 mt-2">
+                            <Flame size={12} className="text-orange-500" />
+                            <span className="text-xs text-orange-600 font-medium">
+                              {ritual.frequency}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      <p className="text-xs text-slate-500 mt-0.5">{ritual.description}</p>
-                      <div className="flex items-center gap-1 mt-2">
-                        <Flame size={12} className="text-orange-500" />
-                        <span className="text-xs text-orange-600 font-medium">
-                          {ritual.streak} day streak
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="courses">
-          <div className="space-y-4">
-            {demoCourses.map((course) => (
-              <Card key={course.id}>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div>
-                      <h3 className="text-sm font-semibold flex items-center gap-2">
-                        <BookOpen size={14} className="text-teal-500" />
-                        {course.title}
-                      </h3>
-                      <p className="text-xs text-slate-500">Source: {course.source}</p>
+          {coursesLoading ? (
+            <p className="text-sm text-slate-400">Loading...</p>
+          ) : courses.length === 0 ? (
+            <p className="text-sm text-slate-400">No courses yet. Go to <Link href="/growth/courses" className="text-blue-600 underline">Courses</Link> to add one.</p>
+          ) : (
+            <div className="space-y-4">
+              {courses.map((course) => (
+                <Card key={course.id}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <h3 className="text-sm font-semibold flex items-center gap-2">
+                          <BookOpen size={14} className="text-teal-500" />
+                          {course.title}
+                        </h3>
+                        {course.description && (
+                          <p className="text-xs text-slate-500">{course.description}</p>
+                        )}
+                        {course.source_type && (
+                          <Badge variant="outline" className="text-xs mt-1">{course.source_type}</Badge>
+                        )}
+                      </div>
+                      <Link href={`/growth/courses/${course.id}`}>
+                        <button className="text-sm text-blue-600 hover:underline">Continue</button>
+                      </Link>
                     </div>
-                    <Link href={`/growth/courses/${course.id}`}>
-                      <Button size="sm" variant="outline">
-                        Continue
-                      </Button>
-                    </Link>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Progress
-                      value={(course.completed / course.total) * 100}
-                      className="flex-1 h-2"
-                    />
-                    <span className="text-xs text-slate-500 whitespace-nowrap">
-                      {course.completed}/{course.total} segments
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                    <div className="flex items-center gap-3">
+                      <Progress
+                        value={0}
+                        className="flex-1 h-2"
+                      />
+                      <span className="text-xs text-slate-500 whitespace-nowrap">
+                        {course.total_segments} segments
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="streaks">
@@ -158,37 +171,16 @@ export default function GrowthPage() {
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <Target size={16} className="text-blue-500" />
-                Activity Heatmap (Last 90 Days)
+                Activity Overview
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-wrap gap-1">
-                {heatmapData.map((d, i) => {
-                  const intensity =
-                    d.count === 0
-                      ? 'bg-slate-100'
-                      : d.count < 3
-                      ? 'bg-green-200'
-                      : d.count < 5
-                      ? 'bg-green-400'
-                      : 'bg-green-600';
-                  return (
-                    <div
-                      key={i}
-                      className={`w-3.5 h-3.5 rounded-sm ${intensity}`}
-                      title={`${d.date.toLocaleDateString()}: ${d.count} rituals completed`}
-                    />
-                  );
-                })}
-              </div>
-              <div className="flex items-center gap-2 mt-3 text-xs text-slate-500">
-                <span>Less</span>
-                <div className="w-3 h-3 rounded-sm bg-slate-100" />
-                <div className="w-3 h-3 rounded-sm bg-green-200" />
-                <div className="w-3 h-3 rounded-sm bg-green-400" />
-                <div className="w-3 h-3 rounded-sm bg-green-600" />
-                <span>More</span>
-              </div>
+              <p className="text-sm text-slate-500">
+                You have {activeRituals.length} active rituals and completed {completedCount} today.
+              </p>
+              <p className="text-sm text-slate-500 mt-2">
+                Streak tracking with heatmap will be available as you build more completion history.
+              </p>
             </CardContent>
           </Card>
         </TabsContent>
