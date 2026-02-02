@@ -163,6 +163,40 @@ export interface DeliveryJournal {
   created_at: string;
 }
 
+// ===== Shas Tracker =====
+
+export type Seder = 'zeraim' | 'moed' | 'nashim' | 'nezikin' | 'kodshim' | 'taharos';
+
+export type CompletionType = 'gemara' | 'mishnayos';
+
+export interface ShasMasechta {
+  id: string;
+  seder: Seder;
+  name: string;
+  perakim: number;
+  daf_count: number | null;
+  has_bavli: boolean;
+  sort_order: number;
+  created_at: string;
+}
+
+export interface ShasCompletion {
+  id: string;
+  masechta_id: string;
+  completion_type: CompletionType;
+  completed_at: string;
+  notes: string | null;
+}
+
+export const SEDER_CONFIG: { key: Seder; label: string; color: string }[] = [
+  { key: 'zeraim', label: 'Zeraim', color: 'bg-amber-100 text-amber-800 border-amber-300' },
+  { key: 'moed', label: 'Moed', color: 'bg-blue-100 text-blue-800 border-blue-300' },
+  { key: 'nashim', label: 'Nashim', color: 'bg-pink-100 text-pink-800 border-pink-300' },
+  { key: 'nezikin', label: 'Nezikin', color: 'bg-purple-100 text-purple-800 border-purple-300' },
+  { key: 'kodshim', label: 'Kodshim', color: 'bg-orange-100 text-orange-800 border-orange-300' },
+  { key: 'taharos', label: 'Taharos', color: 'bg-teal-100 text-teal-800 border-teal-300' },
+];
+
 // ===== Comment type colors =====
 export const COMMENT_TYPE_COLORS: Record<Comment['comment_type'], string> = {
   'note': 'bg-blue-100 text-blue-800',

@@ -14,6 +14,7 @@ import {
   HelpCircle,
   Mic,
   BookOpenCheck,
+  Library,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
@@ -29,6 +30,7 @@ const navItems = [
   { href: '/calendar', label: 'Calendar', icon: Calendar },
   { href: '/tasks', label: 'Tasks', icon: ListTodo },
   { href: '/growth', label: 'Growth', icon: Sparkles },
+  { href: '/shas', label: 'Shas Tracker', icon: Library },
   { href: '/stories', label: 'Stories', icon: BookOpen },
   { href: '/questions', label: 'Questions', icon: HelpCircle },
   { href: '/practice', label: 'Practice', icon: Mic },

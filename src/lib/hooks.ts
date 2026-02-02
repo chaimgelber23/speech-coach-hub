@@ -17,6 +17,9 @@ import type {
   Question,
   PracticeLog,
   DeliveryJournal,
+  ShasMasechta,
+  ShasCompletion,
+  CompletionType,
 } from '@/types';
 
 // Generic hook for fetching data from Supabase
@@ -391,6 +394,58 @@ export function useCourseSegments(courseId: string) {
   return { segments, loading, toggleComplete, refetch: fetch };
 }
 
+// ===== Daily Lessons =====
+export function useDailyLessons() {
+  const [lessons, setLessons] = useState<{ course: Course; segment: CourseSegment }[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetch = useCallback(async () => {
+    setLoading(true);
+    // Get all courses
+    const { data: courses } = await supabase
+      .from('courses')
+      .select('*')
+      .order('created_at', { ascending: true });
+    if (!courses) { setLoading(false); return; }
+
+    // For each course, get the first uncompleted segment
+    const results: { course: Course; segment: CourseSegment }[] = [];
+    for (const course of courses as Course[]) {
+      const { data: segs } = await supabase
+        .from('course_segments')
+        .select('*')
+        .eq('course_id', course.id)
+        .eq('completed', false)
+        .order('segment_number', { ascending: true })
+        .limit(1);
+      if (segs && segs.length > 0) {
+        results.push({ course, segment: segs[0] as CourseSegment });
+      }
+    }
+    setLessons(results);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { fetch(); }, [fetch]);
+
+  async function completeSegment(segmentId: string) {
+    const { error } = await supabase
+      .from('course_segments')
+      .update({
+        completed: true,
+        completed_date: new Date().toISOString().split('T')[0],
+      })
+      .eq('id', segmentId);
+    if (!error) {
+      // Remove from current lessons and refetch to get next segment
+      setLessons((prev) => prev.filter((l) => l.segment.id !== segmentId));
+      fetch();
+    }
+  }
+
+  return { lessons, loading, completeSegment, refetch: fetch };
+}
+
 // ===== Stories =====
 export function useStories() {
   const { data, loading, refetch, setData } = useSupabaseQuery<Story>('stories', {
@@ -429,6 +484,49 @@ export function useQuestions() {
   }
 
   return { questions: data, loading, addQuestion, refetch };
+}
+
+// ===== Shas Tracker =====
+export function useShasMasechtos() {
+  return useSupabaseQuery<ShasMasechta>('shas_masechtos', {
+    orderBy: 'sort_order',
+    ascending: true,
+  });
+}
+
+export function useShasCompletions() {
+  const [completions, setCompletions] = useState<ShasCompletion[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetch = useCallback(async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from('shas_completions')
+      .select('*');
+    setCompletions((data as ShasCompletion[]) || []);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { fetch(); }, [fetch]);
+
+  async function toggleCompletion(masechtaId: string, type: CompletionType) {
+    const existing = completions.find(
+      (c) => c.masechta_id === masechtaId && c.completion_type === type
+    );
+    if (existing) {
+      await supabase.from('shas_completions').delete().eq('id', existing.id);
+      setCompletions((prev) => prev.filter((c) => c.id !== existing.id));
+    } else {
+      const { data, error } = await supabase
+        .from('shas_completions')
+        .insert({ masechta_id: masechtaId, completion_type: type })
+        .select()
+        .single();
+      if (!error && data) setCompletions((prev) => [...prev, data as ShasCompletion]);
+    }
+  }
+
+  return { completions, loading, toggleCompletion, refetch: fetch };
 }
 
 // ===== Practice Logs =====
