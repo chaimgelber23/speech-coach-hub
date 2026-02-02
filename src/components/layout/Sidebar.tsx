@@ -10,6 +10,7 @@ import {
   Calendar,
   ListTodo,
   Sparkles,
+  Sun,
   BookOpen,
   HelpCircle,
   Mic,
@@ -29,6 +30,7 @@ const navItems = [
   { href: '/schedule', label: 'Schedule', icon: Clock },
   { href: '/calendar', label: 'Calendar', icon: Calendar },
   { href: '/tasks', label: 'Tasks', icon: ListTodo },
+  { href: '/growth/daily', label: 'My Daily', icon: Sun },
   { href: '/growth', label: 'Growth', icon: Sparkles },
   { href: '/shas', label: 'Shas Tracker', icon: Library },
   { href: '/stories', label: 'Stories', icon: BookOpen },
@@ -64,10 +66,19 @@ export default function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1 py-4 overflow-y-auto">
         {navItems.map((item) => {
-          const isActive =
-            item.href === '/'
-              ? pathname === '/'
-              : pathname.startsWith(item.href);
+          const isActive = (() => {
+            if (item.href === '/') return pathname === '/';
+            const matches = pathname === item.href || pathname.startsWith(item.href + '/');
+            if (!matches) return false;
+            // Prefer the most specific matching nav item
+            return !navItems.some(
+              (other) =>
+                other !== item &&
+                other.href !== '/' &&
+                other.href.length > item.href.length &&
+                (pathname === other.href || pathname.startsWith(other.href + '/'))
+            );
+          })();
           const Icon = item.icon;
 
           return (

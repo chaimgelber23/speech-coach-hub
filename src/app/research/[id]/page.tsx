@@ -3,13 +3,14 @@
 import Header from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Edit3, Eye } from 'lucide-react';
+import { ArrowLeft, Edit3, Eye, BrainCircuit, MessageSquare } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import DocumentViewer from '@/components/research/DocumentViewer';
 import DocumentEditor from '@/components/research/DocumentEditor';
 import CommentPanel from '@/components/research/CommentPanel';
+import QuizPanel from '@/components/research/QuizPanel';
 import SectionNav from '@/components/research/SectionNav';
 import { useResearchDocument, useComments } from '@/lib/hooks';
 
@@ -27,6 +28,7 @@ export default function ResearchDocPage() {
 
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [rightPanel, setRightPanel] = useState<'comments' | 'quiz'>('comments');
 
   const sectionCommentCounts: Record<string, number> = {};
   comments
@@ -98,6 +100,21 @@ export default function ResearchDocPage() {
             </>
           )}
         </Button>
+        <Button
+          variant={rightPanel === 'quiz' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setRightPanel(rightPanel === 'quiz' ? 'comments' : 'quiz')}
+        >
+          {rightPanel === 'quiz' ? (
+            <>
+              <MessageSquare size={16} className="mr-1" /> Comments
+            </>
+          ) : (
+            <>
+              <BrainCircuit size={16} className="mr-1" /> Quiz
+            </>
+          )}
+        </Button>
         <Badge variant="outline">
           {comments.filter((c) => !c.resolved).length} open comments
         </Badge>
@@ -131,14 +148,18 @@ export default function ResearchDocPage() {
           )}
         </div>
 
-        {/* Comments Panel */}
+        {/* Right Panel: Comments or Quiz */}
         <div className="w-80 shrink-0 hidden md:block">
-          <CommentPanel
-            comments={sectionComments}
-            selectedSection={selectedSection}
-            onAddComment={addComment}
-            onResolveComment={resolveComment}
-          />
+          {rightPanel === 'comments' ? (
+            <CommentPanel
+              comments={sectionComments}
+              selectedSection={selectedSection}
+              onAddComment={addComment}
+              onResolveComment={resolveComment}
+            />
+          ) : (
+            <QuizPanel documentId={doc.id} />
+          )}
         </div>
       </div>
     </div>

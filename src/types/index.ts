@@ -197,6 +197,22 @@ export const SEDER_CONFIG: { key: Seder; label: string; color: string }[] = [
   { key: 'taharos', label: 'Taharos', color: 'bg-teal-100 text-teal-800 border-teal-300' },
 ];
 
+// ===== Quizzes =====
+
+export interface QuizQuestion {
+  question: string;
+  options: string[];
+  correctIndex: number;
+  explanation: string;
+}
+
+export interface Quiz {
+  id: string;
+  document_id: string;
+  questions: QuizQuestion[];
+  created_at: string;
+}
+
 // ===== Comment type colors =====
 export const COMMENT_TYPE_COLORS: Record<Comment['comment_type'], string> = {
   'note': 'bg-blue-100 text-blue-800',

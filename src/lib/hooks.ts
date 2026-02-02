@@ -20,6 +20,7 @@ import type {
   ShasMasechta,
   ShasCompletion,
   CompletionType,
+  Quiz,
 } from '@/types';
 
 // Generic hook for fetching data from Supabase
@@ -484,6 +485,30 @@ export function useQuestions() {
   }
 
   return { questions: data, loading, addQuestion, refetch };
+}
+
+// ===== Quizzes =====
+export function useQuiz(documentId: string) {
+  const [quiz, setQuiz] = useState<Quiz | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetch = useCallback(async () => {
+    if (!documentId) return;
+    setLoading(true);
+    const { data } = await supabase
+      .from('quizzes')
+      .select('*')
+      .eq('document_id', documentId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+    setQuiz((data as Quiz | null) || null);
+    setLoading(false);
+  }, [documentId]);
+
+  useEffect(() => { fetch(); }, [fetch]);
+
+  return { quiz, loading, refetch: fetch };
 }
 
 // ===== Shas Tracker =====

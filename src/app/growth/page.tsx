@@ -6,8 +6,9 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Flame, BookOpen, Target } from 'lucide-react';
+import { Flame, BookOpen, Target, ArrowRight, Sun } from 'lucide-react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 import { useRituals, useRitualCompletions, useCourses } from '@/lib/hooks';
 import AddDialog from '@/components/AddDialog';
@@ -53,6 +54,22 @@ export default function GrowthPage() {
           />
         }
       />
+
+      {/* Daily Growth CTA */}
+      <Link href="/growth/daily">
+        <Card className="mb-6 border-2 border-amber-200 hover:border-amber-400 hover:shadow-md transition-all cursor-pointer bg-gradient-to-r from-amber-50 to-orange-50">
+          <CardContent className="p-4 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+              <Sun size={20} className="text-amber-600" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-sm font-bold text-amber-900">Start Today&apos;s Growth</h3>
+              <p className="text-xs text-amber-700">Your daily rituals and lessons, all in one place</p>
+            </div>
+            <ArrowRight size={18} className="text-amber-500" />
+          </CardContent>
+        </Card>
+      </Link>
 
       <Tabs defaultValue="rituals">
         <TabsList className="mb-6">
