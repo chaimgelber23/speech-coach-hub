@@ -1,59 +1,11 @@
 'use client';
 
 import Header from '@/components/layout/Header';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Mic, TrendingUp } from 'lucide-react';
-import { useState } from 'react';
-
-interface PracticeEntry {
-  id: string;
-  title: string;
-  date: string;
-  duration: number;
-  type: string;
-  vocal: number;
-  vitality: number;
-  visual: number;
-  notes: string;
-}
-
-const demoLogs: PracticeEntry[] = [
-  {
-    id: '1',
-    title: 'Beshalach Speech',
-    date: '2026-02-01',
-    duration: 25,
-    type: 'table_read',
-    vocal: 3,
-    vitality: 2,
-    visual: 2,
-    notes: 'First run-through. Need to work on energy levels. Transition from section 2 to 3 was rough.',
-  },
-  {
-    id: '2',
-    title: 'Kiddush Teaching',
-    date: '2026-01-30',
-    duration: 40,
-    type: 'rehearsal',
-    vocal: 4,
-    vitality: 3,
-    visual: 3,
-    notes: 'Better flow this time. Questions feel more natural. Need to slow down in halachos section.',
-  },
-  {
-    id: '3',
-    title: 'Beshalach Speech',
-    date: '2026-01-28',
-    duration: 15,
-    type: 'table_read',
-    vocal: 2,
-    vitality: 2,
-    visual: 1,
-    notes: 'Initial read. Identified sections that are too long. Need to cut the second proof point.',
-  },
-];
+import { Mic } from 'lucide-react';
+import { usePracticeLogs } from '@/lib/hooks';
+import AddDialog from '@/components/AddDialog';
 
 const typeLabels: Record<string, string> = {
   table_read: 'Table Read',
@@ -68,12 +20,7 @@ function PillarBar({ label, value }: { label: string; value: number }) {
       <span className="text-xs text-slate-500 w-14">{label}</span>
       <div className="flex gap-0.5">
         {[1, 2, 3, 4, 5].map((i) => (
-          <div
-            key={i}
-            className={`w-5 h-2 rounded-sm ${
-              i <= value ? 'bg-blue-500' : 'bg-slate-200'
-            }`}
-          />
+          <div key={i} className={`w-5 h-2 rounded-sm ${i <= value ? 'bg-blue-500' : 'bg-slate-200'}`} />
         ))}
       </div>
       <span className="text-xs text-slate-400">{value}/5</span>
@@ -82,80 +29,94 @@ function PillarBar({ label, value }: { label: string; value: number }) {
 }
 
 export default function PracticePage() {
+  const { logs, loading, addLog } = usePracticeLogs();
+
+  const totalMinutes = logs.reduce((sum, l) => sum + (l.duration_minutes || 0), 0);
+  const avgRating = logs.length > 0
+    ? (logs.reduce((sum, l) => sum + (l.vocal_rating || 0) + (l.vitality_rating || 0) + (l.visual_rating || 0), 0) / (logs.length * 3)).toFixed(1)
+    : '0';
+
   return (
     <div className="max-w-4xl mx-auto">
       <Header
         title="Practice Log"
         description="Track your rehearsals — Vocal, Vitality, Visual (Eliezer Blatt)"
         action={
-          <Button size="sm">
-            <Plus size={16} className="mr-1" /> Log Practice
-          </Button>
+          <AddDialog
+            title="Log Practice Session"
+            buttonLabel="Log Practice"
+            fields={[
+              { name: 'date', label: 'Date', type: 'date', required: true },
+              { name: 'duration_minutes', label: 'Duration (minutes)', type: 'text', required: true, placeholder: '30' },
+              {
+                name: 'practice_type', label: 'Type', type: 'select',
+                options: [
+                  { value: 'table_read', label: 'Table Read' },
+                  { value: 'block', label: 'Block Movements' },
+                  { value: 'rehearsal', label: 'Rehearsal' },
+                  { value: 'dress', label: 'Dress Rehearsal' },
+                ],
+              },
+              { name: 'vocal_rating', label: 'Vocal (1-5)', type: 'text', placeholder: '3' },
+              { name: 'vitality_rating', label: 'Vitality (1-5)', type: 'text', placeholder: '3' },
+              { name: 'visual_rating', label: 'Visual (1-5)', type: 'text', placeholder: '3' },
+              { name: 'notes', label: 'Notes', type: 'textarea', placeholder: 'What went well? What to improve?' },
+            ]}
+            onSubmit={async (values) => {
+              return addLog({
+                date: values.date,
+                duration_minutes: parseInt(values.duration_minutes) || 0,
+                practice_type: values.practice_type || 'table_read',
+                vocal_rating: parseInt(values.vocal_rating) || 3,
+                vitality_rating: parseInt(values.vitality_rating) || 3,
+                visual_rating: parseInt(values.visual_rating) || 3,
+                notes: values.notes || null,
+                pipeline_id: null,
+              });
+            }}
+          />
         }
       />
 
-      {/* Summary Stats */}
       <div className="grid grid-cols-3 gap-4 mb-6">
-        <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-slate-700">{demoLogs.length}</p>
-            <p className="text-xs text-slate-500">Total Sessions</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-slate-700">
-              {demoLogs.reduce((sum, l) => sum + l.duration, 0)}
-            </p>
-            <p className="text-xs text-slate-500">Total Minutes</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-slate-700">
-              {(
-                demoLogs.reduce((sum, l) => sum + l.vocal + l.vitality + l.visual, 0) /
-                (demoLogs.length * 3)
-              ).toFixed(1)}
-            </p>
-            <p className="text-xs text-slate-500">Avg Rating</p>
-          </CardContent>
-        </Card>
+        <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold text-slate-700">{logs.length}</p><p className="text-xs text-slate-500">Total Sessions</p></CardContent></Card>
+        <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold text-slate-700">{totalMinutes}</p><p className="text-xs text-slate-500">Total Minutes</p></CardContent></Card>
+        <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold text-slate-700">{avgRating}</p><p className="text-xs text-slate-500">Avg Rating</p></CardContent></Card>
       </div>
 
-      {/* Practice Log Entries */}
-      <div className="space-y-3">
-        {demoLogs.map((log) => (
-          <Card key={log.id}>
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <h3 className="text-sm font-semibold flex items-center gap-2">
-                    <Mic size={14} className="text-purple-500" />
-                    {log.title}
-                  </h3>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs text-slate-500">{log.date}</span>
-                    <Badge variant="outline" className="text-xs">
-                      {typeLabels[log.type] || log.type}
-                    </Badge>
-                    <span className="text-xs text-slate-400">{log.duration} min</span>
+      {loading ? (
+        <p className="text-sm text-slate-400">Loading...</p>
+      ) : logs.length === 0 ? (
+        <p className="text-sm text-slate-400">No practice sessions yet. Click &quot;Log Practice&quot; to add one.</p>
+      ) : (
+        <div className="space-y-3">
+          {logs.map((log) => (
+            <Card key={log.id}>
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <h3 className="text-sm font-semibold flex items-center gap-2">
+                      <Mic size={14} className="text-purple-500" />
+                      Practice Session
+                    </h3>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-xs text-slate-500">{log.date}</span>
+                      <Badge variant="outline" className="text-xs">{typeLabels[log.practice_type || ''] || log.practice_type}</Badge>
+                      <span className="text-xs text-slate-400">{log.duration_minutes} min</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-
-              {/* Pillar Ratings */}
-              <div className="space-y-1 mb-3">
-                <PillarBar label="Vocal" value={log.vocal} />
-                <PillarBar label="Vitality" value={log.vitality} />
-                <PillarBar label="Visual" value={log.visual} />
-              </div>
-
-              <p className="text-xs text-slate-600 border-t pt-2">{log.notes}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                <div className="space-y-1 mb-3">
+                  <PillarBar label="Vocal" value={log.vocal_rating || 0} />
+                  <PillarBar label="Vitality" value={log.vitality_rating || 0} />
+                  <PillarBar label="Visual" value={log.visual_rating || 0} />
+                </div>
+                {log.notes && <p className="text-xs text-slate-600 border-t pt-2">{log.notes}</p>}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

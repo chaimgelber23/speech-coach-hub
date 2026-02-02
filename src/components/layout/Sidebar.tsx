@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
+import NotificationManager from '@/components/NotificationManager';
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -86,11 +87,12 @@ export default function Sidebar() {
       </nav>
 
       {/* Footer */}
-      {!collapsed && (
-        <div className="p-4 border-t border-slate-700 text-xs text-slate-500">
-          Speech Coach Hub
-        </div>
-      )}
+      <div className="p-4 border-t border-slate-700 flex items-center justify-between">
+        {!collapsed && (
+          <span className="text-xs text-slate-500">Speech Coach Hub</span>
+        )}
+        <NotificationManager />
+      </div>
     </aside>
   );
 }
