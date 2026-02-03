@@ -4,8 +4,9 @@ import Header from '@/components/layout/Header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Library, CheckCircle2, BookOpen } from 'lucide-react';
+import { Library, BookOpen } from 'lucide-react';
 import { useShasMasechtos, useShasCompletions } from '@/lib/hooks';
 import { SEDER_CONFIG, type CompletionType } from '@/types';
 import { cn } from '@/lib/utils';
@@ -16,7 +17,6 @@ export default function ShasTrackerPage() {
 
   const loading = masechtosLoading || completionsLoading;
 
-  // Build completion lookup: Set of "masechtaId-type" strings
   const completionKeys = new Set(
     completions.map((c) => `${c.masechta_id}-${c.completion_type}`)
   );
@@ -25,10 +25,8 @@ export default function ShasTrackerPage() {
     return completionKeys.has(`${masechtaId}-${type}`);
   }
 
-  // Gemara masechtos (37 with Bavli)
   const gemaraMasechtos = masechtos.filter((m) => m.has_bavli);
 
-  // Stats helper
   function getStats(list: typeof masechtos, type: CompletionType) {
     const total = list.length;
     const completed = list.filter((m) => isCompleted(m.id, type)).length;
@@ -55,7 +53,7 @@ export default function ShasTrackerPage() {
 
     return (
       <>
-        {/* Overall Progress Card */}
+        {/* Overall Progress */}
         <Card className="mb-6">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
@@ -94,9 +92,12 @@ export default function ShasTrackerPage() {
                       <Badge className={cn('text-xs', seder.color)}>
                         {seder.label}
                       </Badge>
+                      <span className="text-sm font-normal text-slate-500">
+                        {seder.total} masechtos
+                      </span>
                     </CardTitle>
                     <span className="text-xs text-slate-500">
-                      {seder.completed}/{seder.total} masechtos
+                      {seder.completed}/{seder.total} learned
                       {' \u00b7 '}
                       {seder.completedUnits}/{seder.totalUnits} {unitLabel}
                     </span>
@@ -106,44 +107,77 @@ export default function ShasTrackerPage() {
                     className="h-1.5"
                   />
                 </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
-                    {seder.masechtos.map((masechta) => {
-                      const done = isCompleted(masechta.id, type);
-                      const unitCount = type === 'gemara' ? masechta.daf_count : masechta.perakim;
-                      return (
-                        <button
-                          key={masechta.id}
-                          onClick={() => toggleCompletion(masechta.id, type)}
-                          className={cn(
-                            'relative p-3 rounded-lg border-2 text-left transition-all hover:shadow-md cursor-pointer',
-                            done
-                              ? 'bg-green-50 border-green-300 hover:border-green-400'
-                              : 'bg-slate-50 border-slate-200 hover:border-slate-300'
-                          )}
-                        >
-                          {done && (
-                            <CheckCircle2
-                              size={14}
-                              className="absolute top-1.5 right-1.5 text-green-500"
-                            />
-                          )}
-                          <p className={cn(
-                            'text-sm font-medium truncate',
-                            done ? 'text-green-800' : 'text-slate-700'
-                          )}>
-                            {masechta.name}
-                          </p>
-                          <p className={cn(
-                            'text-xs mt-0.5',
-                            done ? 'text-green-600' : 'text-slate-400'
-                          )}>
-                            {unitCount} {unitLabel}
-                          </p>
-                        </button>
-                      );
-                    })}
+                <CardContent className="pt-0">
+                  {/* Table header */}
+                  <div className={cn(
+                    'grid items-center gap-x-3 px-3 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wide border-b border-slate-100',
+                    type === 'gemara'
+                      ? 'grid-cols-[auto_1fr_80px_80px_80px]'
+                      : 'grid-cols-[auto_1fr_80px_80px]'
+                  )}>
+                    <div className="w-5" />
+                    <div>Masechta</div>
+                    <div className="text-center">Perakim</div>
+                    {type === 'gemara' && <div className="text-center">Daf</div>}
+                    <div className="text-center">Status</div>
                   </div>
+
+                  {/* Masechta rows */}
+                  {seder.masechtos.map((masechta) => {
+                    const done = isCompleted(masechta.id, type);
+                    return (
+                      <button
+                        key={masechta.id}
+                        onClick={() => toggleCompletion(masechta.id, type)}
+                        className={cn(
+                          'grid w-full text-left cursor-pointer transition-colors',
+                          type === 'gemara'
+                            ? 'grid-cols-[auto_1fr_80px_80px_80px]'
+                            : 'grid-cols-[auto_1fr_80px_80px]',
+                          'items-center gap-x-3 px-3 py-2.5 rounded-lg',
+                          done
+                            ? 'bg-green-50 hover:bg-green-100'
+                            : 'hover:bg-slate-50'
+                        )}
+                      >
+                        <Checkbox
+                          checked={done}
+                          className="pointer-events-none"
+                        />
+                        <span className={cn(
+                          'text-sm font-medium',
+                          done ? 'text-green-800' : 'text-slate-800'
+                        )}>
+                          {masechta.name}
+                        </span>
+                        <span className={cn(
+                          'text-sm text-center tabular-nums',
+                          done ? 'text-green-600' : 'text-slate-500'
+                        )}>
+                          {masechta.perakim}
+                        </span>
+                        {type === 'gemara' && (
+                          <span className={cn(
+                            'text-sm text-center tabular-nums',
+                            done ? 'text-green-600' : 'text-slate-500'
+                          )}>
+                            {masechta.daf_count}
+                          </span>
+                        )}
+                        <div className="flex justify-center">
+                          {done ? (
+                            <Badge className="bg-green-100 text-green-700 text-xs">
+                              Learned
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-slate-400 text-xs">
+                              &mdash;
+                            </Badge>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
                 </CardContent>
               </Card>
             );
