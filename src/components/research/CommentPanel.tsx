@@ -70,7 +70,7 @@ export default function CommentPanel({
     : null;
 
   return (
-    <Card className="sticky top-6">
+    <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-sm flex items-center gap-2">
           <MessageSquare size={14} />

@@ -237,17 +237,19 @@ export default function ResearchDocPage() {
         </div>
 
         {/* Right Panel: Comments or Quiz */}
-        <div ref={commentPanelRef} className="w-80 shrink-0 hidden md:block">
-          {rightPanel === 'comments' ? (
-            <CommentPanel
-              comments={sectionComments}
-              selectedSection={selectedSection}
-              onAddComment={addComment}
-              onResolveComment={resolveComment}
-            />
-          ) : (
-            <QuizPanel documentId={doc.id} />
-          )}
+        <div className="w-80 shrink-0 hidden md:block">
+          <div ref={commentPanelRef} className="sticky top-6 max-h-[calc(100vh-3rem)] overflow-y-auto">
+            {rightPanel === 'comments' ? (
+              <CommentPanel
+                comments={sectionComments}
+                selectedSection={selectedSection}
+                onAddComment={addComment}
+                onResolveComment={resolveComment}
+              />
+            ) : (
+              <QuizPanel documentId={doc.id} />
+            )}
+          </div>
         </div>
       </div>
     </div>
