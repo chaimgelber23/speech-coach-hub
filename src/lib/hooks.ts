@@ -169,6 +169,73 @@ export function useComments(documentId: string) {
   return { comments, loading, addComment, resolveComment, refetch: fetch };
 }
 
+// ===== Topic Grouping =====
+export interface TopicGroup {
+  topicSlug: string;
+  title: string;
+  category: ResearchDocument['category'];
+  documents: ResearchDocument[];
+  updated_at: string;
+}
+
+export function useTopicGroups() {
+  const { data: documents, loading, refetch } = useResearchDocuments();
+
+  const groups: TopicGroup[] = [];
+  const grouped = new Map<string, ResearchDocument[]>();
+
+  for (const doc of documents) {
+    const key = doc.topic_slug || doc.slug;
+    if (!grouped.has(key)) grouped.set(key, []);
+    grouped.get(key)!.push(doc);
+  }
+
+  for (const [topicSlug, docs] of grouped) {
+    const primary = docs.find((d) => d.status === 'research') || docs[0];
+    groups.push({
+      topicSlug,
+      title: primary.title,
+      category: primary.category,
+      documents: docs.sort((a, b) => {
+        const order = ['research', 'prep', 'session', 'practice', 'complete'];
+        return order.indexOf(a.status) - order.indexOf(b.status);
+      }),
+      updated_at: docs.reduce((latest, d) =>
+        d.updated_at > latest ? d.updated_at : latest, docs[0].updated_at
+      ),
+    });
+  }
+
+  groups.sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+
+  return { groups, loading, refetch };
+}
+
+export function useTopicDocuments(topicSlug: string | null) {
+  const [documents, setDocuments] = useState<ResearchDocument[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetch = useCallback(async () => {
+    if (!topicSlug) {
+      setDocuments([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    const { data } = await supabase
+      .from('research_documents')
+      .select('*')
+      .eq('topic_slug', topicSlug)
+      .order('status', { ascending: true });
+    setDocuments((data as ResearchDocument[]) || []);
+    setLoading(false);
+  }, [topicSlug]);
+
+  useEffect(() => { fetch(); }, [fetch]);
+
+  return { documents, loading, refetch: fetch };
+}
+
 // ===== Pipeline =====
 export function usePipeline() {
   const { data, loading, refetch, setData } = useSupabaseQuery<PipelineItem>('pipeline_items', {

@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { MessageSquare, Check, Plus } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Comment } from '@/types';
 import { COMMENT_TYPE_COLORS } from '@/types';
 import { cn } from '@/lib/utils';
@@ -42,6 +42,17 @@ export default function CommentPanel({
   const [newComment, setNewComment] = useState('');
   const [newType, setNewType] = useState<Comment['comment_type']>('note');
   const [isAdding, setIsAdding] = useState(false);
+  const prevSectionRef = useRef(selectedSection);
+
+  // Auto-open comment form when a new section is selected
+  useEffect(() => {
+    if (selectedSection && selectedSection !== prevSectionRef.current) {
+      setIsAdding(true);
+      setNewComment('');
+      setNewType('note');
+    }
+    prevSectionRef.current = selectedSection;
+  }, [selectedSection]);
 
   function handleSubmit() {
     if (!selectedSection || !newComment.trim()) return;

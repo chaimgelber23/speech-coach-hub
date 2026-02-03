@@ -7,7 +7,8 @@ export interface ResearchDocument {
   category: 'mitzvah' | 'course' | 'draft' | 'speech';
   content: string;
   sections: Section[];
-  status: 'research' | 'prep' | 'session' | 'complete';
+  status: 'research' | 'prep' | 'session' | 'practice' | 'complete';
+  topic_slug: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -212,6 +213,15 @@ export interface Quiz {
   questions: QuizQuestion[];
   created_at: string;
 }
+
+// ===== File type labels (for tab bar) =====
+export const FILE_TYPE_LABELS: Record<ResearchDocument['status'], string> = {
+  research: 'Research',
+  prep: 'Prep',
+  session: 'Session',
+  practice: 'Practice',
+  complete: 'Complete',
+};
 
 // ===== Comment type colors =====
 export const COMMENT_TYPE_COLORS: Record<Comment['comment_type'], string> = {

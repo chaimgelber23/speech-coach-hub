@@ -13,6 +13,13 @@ interface ImportResult {
   errors: string[];
 }
 
+const STATUS_MAP: Record<string, string> = {
+  'research': 'research',
+  'prep': 'prep',
+  'session': 'session',
+  'practice': 'practice',
+};
+
 export async function POST() {
   const result: ImportResult = {
     imported: [],
@@ -22,40 +29,51 @@ export async function POST() {
 
   const projectRoot = path.resolve(process.cwd(), '..');
 
-  // Import mitzvos research documents
+  // Import mitzvos - dynamically discover all .md files in each folder
   const mitzvosDir = path.join(projectRoot, 'content', 'mitzvos');
   if (fs.existsSync(mitzvosDir)) {
     const mitzvos = fs.readdirSync(mitzvosDir);
     for (const mitzvah of mitzvos) {
-      const researchPath = path.join(mitzvosDir, mitzvah, 'research.md');
-      if (fs.existsSync(researchPath)) {
+      const mitzvahDir = path.join(mitzvosDir, mitzvah);
+      if (!fs.statSync(mitzvahDir).isDirectory()) continue;
+
+      const files = fs.readdirSync(mitzvahDir).filter(
+        (f) => f.endsWith('.md') && !f.endsWith('-print.md')
+      );
+
+      for (const file of files) {
+        const baseName = file.replace('.md', '');
+        const status = STATUS_MAP[baseName] || 'research';
+        const filePath = path.join(mitzvahDir, file);
+
         try {
-          const content = fs.readFileSync(researchPath, 'utf-8');
-          const title = extractTitle(content) || mitzvah.replace(/-/g, ' ');
-          const slug = generateSlug(mitzvah);
+          const content = fs.readFileSync(filePath, 'utf-8');
+          const folderLabel = mitzvah.replace(/-/g, ' ');
+          const suffix = status !== 'research' ? ` - ${status}` : '';
+          const title = extractTitle(content) || `${folderLabel}${suffix}`;
+          const slugSuffix = status !== 'research' ? `-${status}` : '';
+          const slug = generateSlug(`${mitzvah}${slugSuffix}`);
           const sections = parseSections(content);
 
-          const { error } = await supabase
-            .from('research_documents')
-            .upsert(
-              {
+          const row: Record<string, unknown> = {
                 title,
                 slug,
                 category: 'mitzvah',
                 content,
                 sections,
-                status: 'research',
-              },
-              { onConflict: 'slug' }
-            );
+                status,
+              };
+          const { error } = await supabase
+            .from('research_documents')
+            .upsert(row, { onConflict: 'slug' });
 
           if (error) {
-            result.errors.push(`${mitzvah}: ${error.message}`);
+            result.errors.push(`${mitzvah} ${status}: ${error.message}`);
           } else {
-            result.imported.push(`mitzvah: ${mitzvah}`);
+            result.imported.push(`mitzvah ${status}: ${mitzvah}`);
           }
         } catch (e) {
-          result.errors.push(`${mitzvah}: ${String(e)}`);
+          result.errors.push(`${mitzvah} ${baseName}: ${String(e)}`);
         }
       }
     }
@@ -81,7 +99,7 @@ export async function POST() {
               category: 'draft',
               content,
               sections,
-              status: 'draft',
+              status: 'research',
             },
             { onConflict: 'slug' }
           );
@@ -97,40 +115,51 @@ export async function POST() {
     }
   }
 
-  // Import courses
+  // Import courses (research/prep/session)
   const coursesDir = path.join(projectRoot, 'courses');
   if (fs.existsSync(coursesDir)) {
     const courses = fs.readdirSync(coursesDir);
     for (const course of courses) {
-      const researchPath = path.join(coursesDir, course, 'research.md');
-      if (fs.existsSync(researchPath)) {
+      const courseDir = path.join(coursesDir, course);
+      if (!fs.statSync(courseDir).isDirectory()) continue;
+
+      const files = fs.readdirSync(courseDir).filter(
+        (f) => f.endsWith('.md') && !f.endsWith('-print.md')
+      );
+
+      for (const file of files) {
+        const baseName = file.replace('.md', '');
+        const status = STATUS_MAP[baseName] || 'research';
+        const filePath = path.join(courseDir, file);
+
         try {
-          const content = fs.readFileSync(researchPath, 'utf-8');
-          const title = extractTitle(content) || course.replace(/-/g, ' ');
-          const slug = generateSlug(course);
+          const content = fs.readFileSync(filePath, 'utf-8');
+          const folderLabel = course.replace(/-/g, ' ');
+          const suffix = status !== 'research' ? ` - ${status}` : '';
+          const title = extractTitle(content) || `${folderLabel}${suffix}`;
+          const slugSuffix = status !== 'research' ? `-${status}` : '';
+          const slug = generateSlug(`${course}${slugSuffix}`);
           const sections = parseSections(content);
 
-          const { error } = await supabase
-            .from('research_documents')
-            .upsert(
-              {
+          const row: Record<string, unknown> = {
                 title,
                 slug,
                 category: 'course',
                 content,
                 sections,
-                status: 'research',
-              },
-              { onConflict: 'slug' }
-            );
+                status,
+              };
+          const { error } = await supabase
+            .from('research_documents')
+            .upsert(row, { onConflict: 'slug' });
 
           if (error) {
-            result.errors.push(`course ${course}: ${error.message}`);
+            result.errors.push(`course ${course} ${status}: ${error.message}`);
           } else {
-            result.imported.push(`course: ${course}`);
+            result.imported.push(`course ${status}: ${course}`);
           }
         } catch (e) {
-          result.errors.push(`course ${course}: ${String(e)}`);
+          result.errors.push(`course ${course} ${baseName}: ${String(e)}`);
         }
       }
     }
