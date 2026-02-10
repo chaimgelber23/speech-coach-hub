@@ -34,6 +34,7 @@ export default function ResearchPage() {
   const { groups, loading, refetch } = useTopicGroups();
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [filterParsha, setFilterParsha] = useState<string>('all');
 
   // Count topics per category for filter badges
   const categoryCounts: Record<string, number> = { all: groups.length };
@@ -41,12 +42,23 @@ export default function ResearchPage() {
     categoryCounts[g.category] = (categoryCounts[g.category] || 0) + 1;
   }
 
+  // Extract unique parsha names from topic_slug for parsha-category groups
+  const parshaGroups = groups.filter((g) => g.category === 'parsha');
+  const parshaNames = [...new Set(parshaGroups.map((g) => {
+    // topic_slug format: "mishpatim-higher-levels" → extract first word as parsha name
+    const slug = g.topicSlug || '';
+    const firstWord = slug.split('-')[0];
+    return firstWord.charAt(0).toUpperCase() + firstWord.slice(1);
+  }))].filter(Boolean).sort();
+
   const filtered = groups.filter((group) => {
     const matchesSearch =
       group.title.toLowerCase().includes(search.toLowerCase()) ||
       group.documents.some((d) => d.title.toLowerCase().includes(search.toLowerCase()));
     const matchesCategory = filterCategory === 'all' || group.category === filterCategory;
-    return matchesSearch && matchesCategory;
+    const matchesParsha = filterCategory !== 'parsha' || filterParsha === 'all' ||
+      (group.topicSlug || '').toLowerCase().startsWith(filterParsha.toLowerCase());
+    return matchesSearch && matchesCategory && matchesParsha;
   });
 
   return (
@@ -105,7 +117,7 @@ export default function ResearchPage() {
                 key={cat}
                 variant={filterCategory === cat ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => setFilterCategory(cat)}
+                onClick={() => { setFilterCategory(cat); if (cat !== 'parsha') setFilterParsha('all'); }}
                 className="gap-1.5"
               >
                 {cat === 'all' ? 'All' : config?.label || cat}
@@ -120,6 +132,31 @@ export default function ResearchPage() {
           })}
         </div>
       </div>
+
+      {/* Parsha sub-filter */}
+      {filterCategory === 'parsha' && parshaNames.length > 1 && (
+        <div className="flex gap-1.5 flex-wrap mb-6">
+          <Button
+            variant={filterParsha === 'all' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setFilterParsha('all')}
+            className="h-7 text-xs"
+          >
+            All Parsha
+          </Button>
+          {parshaNames.map((name) => (
+            <Button
+              key={name}
+              variant={filterParsha === name.toLowerCase() ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFilterParsha(name.toLowerCase())}
+              className="h-7 text-xs"
+            >
+              {name}
+            </Button>
+          ))}
+        </div>
+      )}
 
       {/* Document Grid */}
       {loading ? (
