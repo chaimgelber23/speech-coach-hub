@@ -4,10 +4,12 @@ import Header from '@/components/layout/Header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Search, BookOpen } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Search, BookOpen, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import { useStories } from '@/lib/hooks';
 import AddDialog from '@/components/AddDialog';
+import Link from 'next/link';
 
 const sourceColors: Record<string, string> = {
   personal: 'bg-blue-100 text-blue-800',
@@ -37,7 +39,14 @@ export default function StoriesPage() {
         title="Story Bank"
         description="Your collection of personal and borrowed stories"
         action={
-          <AddDialog
+          <div className="flex gap-2">
+            <Link href="/stories/capture">
+              <Button variant="outline" size="sm">
+                <Sparkles size={14} className="mr-1" />
+                Daily Capture
+              </Button>
+            </Link>
+            <AddDialog
             title="Add Story"
             buttonLabel="Add Story"
             fields={[
@@ -67,6 +76,7 @@ export default function StoriesPage() {
               );
             }}
           />
+          </div>
         }
       />
 

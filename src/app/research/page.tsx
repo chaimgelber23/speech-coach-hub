@@ -1,36 +1,44 @@
 'use client';
 
 import Header from '@/components/layout/Header';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { FileText, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { useTopicGroups, createResearchDocument } from '@/lib/hooks';
 import { FILE_TYPE_LABELS } from '@/types';
 import AddDialog from '@/components/AddDialog';
+import { cn } from '@/lib/utils';
 
-const statusColors: Record<string, string> = {
-  research: 'bg-blue-100 text-blue-800',
-  prep: 'bg-yellow-100 text-yellow-800',
-  session: 'bg-orange-100 text-orange-800',
-  practice: 'bg-cyan-100 text-cyan-800',
-  complete: 'bg-green-100 text-green-800',
+const STAGES = ['research', 'prep', 'session', 'practice', 'complete'] as const;
+
+const stageConfig: Record<string, { dot: string; activeBg: string }> = {
+  research: { dot: 'bg-blue-400', activeBg: 'bg-blue-50 text-blue-700 ring-blue-200' },
+  prep: { dot: 'bg-yellow-400', activeBg: 'bg-yellow-50 text-yellow-700 ring-yellow-200' },
+  session: { dot: 'bg-orange-400', activeBg: 'bg-orange-50 text-orange-700 ring-orange-200' },
+  practice: { dot: 'bg-cyan-400', activeBg: 'bg-cyan-50 text-cyan-700 ring-cyan-200' },
+  complete: { dot: 'bg-green-400', activeBg: 'bg-green-50 text-green-700 ring-green-200' },
 };
 
-const categoryLabels: Record<string, string> = {
-  mitzvah: 'Mitzvah',
-  course: 'Course',
-  draft: 'Draft',
-  speech: 'Speech',
+const categoryConfig: Record<string, { label: string; accent: string; bg: string }> = {
+  mitzvah: { label: 'Mitzvah', accent: 'border-l-purple-400', bg: 'text-purple-600' },
+  course: { label: 'Course', accent: 'border-l-green-400', bg: 'text-green-600' },
+  draft: { label: 'Draft', accent: 'border-l-slate-400', bg: 'text-slate-600' },
+  speech: { label: 'Speech', accent: 'border-l-orange-400', bg: 'text-orange-600' },
 };
 
 export default function ResearchPage() {
   const { groups, loading, refetch } = useTopicGroups();
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('all');
+
+  // Count topics per category for filter badges
+  const categoryCounts: Record<string, number> = { all: groups.length };
+  for (const g of groups) {
+    categoryCounts[g.category] = (categoryCounts[g.category] || 0) + 1;
+  }
 
   const filtered = groups.filter((group) => {
     const matchesSearch =
@@ -76,7 +84,8 @@ export default function ResearchPage() {
         }
       />
 
-      <div className="flex gap-3 mb-6">
+      {/* Search + Filter */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-6">
         <div className="relative flex-1 max-w-sm">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <Input
@@ -86,20 +95,32 @@ export default function ResearchPage() {
             className="pl-9"
           />
         </div>
-        <div className="flex gap-1">
-          {['all', 'mitzvah', 'course', 'draft', 'speech'].map((cat) => (
-            <Button
-              key={cat}
-              variant={filterCategory === cat ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setFilterCategory(cat)}
-            >
-              {cat === 'all' ? 'All' : categoryLabels[cat] || cat}
-            </Button>
-          ))}
+        <div className="flex gap-1 flex-wrap">
+          {['all', 'mitzvah', 'course', 'draft', 'speech'].map((cat) => {
+            const count = categoryCounts[cat] || 0;
+            const config = categoryConfig[cat];
+            return (
+              <Button
+                key={cat}
+                variant={filterCategory === cat ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFilterCategory(cat)}
+                className="gap-1.5"
+              >
+                {cat === 'all' ? 'All' : config?.label || cat}
+                <span className={cn(
+                  'text-xs rounded-full px-1.5 min-w-[1.25rem] text-center',
+                  filterCategory === cat ? 'bg-white/20' : 'bg-slate-100'
+                )}>
+                  {count}
+                </span>
+              </Button>
+            );
+          })}
         </div>
       </div>
 
+      {/* Document Grid */}
       {loading ? (
         <p className="text-sm text-slate-400">Loading...</p>
       ) : filtered.length === 0 ? (
@@ -108,34 +129,64 @@ export default function ResearchPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((group) => {
             const primaryDoc = group.documents.find((d) => d.status === 'research') || group.documents[0];
+            const catConfig = categoryConfig[group.category];
+            const existingStatuses = new Set(group.documents.map((d) => d.status));
+            // Find the furthest stage reached
+            const furthestStage = [...STAGES].reverse().find((s) => existingStatuses.has(s)) || 'research';
+
             return (
               <Link key={group.topicSlug} href={`/research/${primaryDoc.slug}`}>
-                <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
-                  <CardHeader className="pb-2">
-                    <div className="flex items-start justify-between">
-                      <CardTitle className="text-base leading-snug">{group.title}</CardTitle>
-                      <FileText size={16} className="text-slate-400 shrink-0 mt-0.5" />
+                <Card className={cn(
+                  'hover:shadow-md transition-shadow cursor-pointer h-full border-l-4',
+                  catConfig?.accent || 'border-l-slate-300'
+                )}>
+                  <CardContent className="pt-4 pb-3">
+                    {/* Category label */}
+                    <span className={cn('text-[11px] font-medium uppercase tracking-wide', catConfig?.bg || 'text-slate-500')}>
+                      {catConfig?.label || group.category}
+                    </span>
+
+                    {/* Title */}
+                    <h3 className="text-[15px] font-semibold text-slate-900 mt-1 mb-3 leading-snug">
+                      {group.title}
+                    </h3>
+
+                    {/* Stage progress stepper */}
+                    <div className="flex items-center gap-1 mb-3">
+                      {STAGES.map((stage, i) => {
+                        const hasStage = existingStatuses.has(stage);
+                        return (
+                          <div key={stage} className="flex items-center gap-1 flex-1">
+                            <div className={cn(
+                              'flex items-center justify-center rounded-full text-[10px] font-medium px-2 py-0.5 w-full transition-colors',
+                              hasStage
+                                ? `${stageConfig[stage].activeBg} ring-1`
+                                : 'bg-slate-50 text-slate-300'
+                            )}>
+                              {FILE_TYPE_LABELS[stage]?.[0] || stage[0].toUpperCase()}
+                            </div>
+                            {i < STAGES.length - 1 && (
+                              <div className={cn(
+                                'w-1 h-px shrink-0',
+                                hasStage ? stageConfig[stage].dot : 'bg-slate-200'
+                              )} />
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center gap-2 mb-2">
-                      <Badge variant="outline" className="text-xs">
-                        {categoryLabels[group.category] || group.category}
-                      </Badge>
-                    </div>
-                    <div className="flex flex-wrap gap-1 mb-2">
-                      {group.documents.map((doc) => (
-                        <Badge
-                          key={doc.id}
-                          className={`text-xs ${statusColors[doc.status] || ''}`}
-                          variant="secondary"
-                        >
-                          {FILE_TYPE_LABELS[doc.status] || doc.status}
-                        </Badge>
-                      ))}
-                    </div>
-                    <div className="text-xs text-slate-500">
-                      Updated {new Date(group.updated_at).toLocaleDateString()}
+
+                    {/* Footer */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-slate-400">
+                        {new Date(group.updated_at).toLocaleDateString()}
+                      </span>
+                      <span className={cn(
+                        'text-[11px] font-medium',
+                        stageConfig[furthestStage]?.activeBg?.split(' ')[1] || 'text-slate-500'
+                      )}>
+                        {FILE_TYPE_LABELS[furthestStage] || furthestStage}
+                      </span>
                     </div>
                   </CardContent>
                 </Card>

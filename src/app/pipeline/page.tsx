@@ -3,10 +3,11 @@
 import Header from '@/components/layout/Header';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { GripVertical } from 'lucide-react';
+import { GripVertical, ExternalLink } from 'lucide-react';
 import { usePipeline } from '@/lib/hooks';
 import { PIPELINE_STAGES } from '@/types';
 import AddDialog from '@/components/AddDialog';
+import Link from 'next/link';
 
 export default function PipelinePage() {
   const { items, loading, addItem, updateStage } = usePipeline();
@@ -70,18 +71,18 @@ export default function PipelinePage() {
                     <span className="text-xs text-slate-500 bg-white px-1.5 py-0.5 rounded">{stageItems.length}</span>
                   </div>
                   <div className="space-y-2">
-                    {stageItems.map((item) => (
-                      <Card
-                        key={item.id}
-                        draggable
-                        onDragStart={(e) => handleDragStart(e, item.id)}
-                        className="cursor-grab active:cursor-grabbing shadow-sm"
-                      >
+                    {stageItems.map((item) => {
+                      const cardContent = (
                         <CardContent className="p-3">
                           <div className="flex items-start gap-2">
                             <GripVertical size={14} className="text-slate-300 mt-0.5 shrink-0" />
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">{item.title}</p>
+                              <div className="flex items-center gap-1">
+                                <p className="text-sm font-medium truncate">{item.title}</p>
+                                {item.document_slug && (
+                                  <ExternalLink size={12} className="text-slate-400 shrink-0" />
+                                )}
+                              </div>
                               <div className="flex items-center gap-2 mt-1">
                                 {item.content_type && (
                                   <Badge variant="outline" className="text-xs">{item.content_type}</Badge>
@@ -93,8 +94,29 @@ export default function PipelinePage() {
                             </div>
                           </div>
                         </CardContent>
-                      </Card>
-                    ))}
+                      );
+
+                      return item.document_slug ? (
+                        <Link key={item.id} href={`/research/${item.document_slug}`}>
+                          <Card
+                            draggable
+                            onDragStart={(e) => handleDragStart(e, item.id)}
+                            className="cursor-pointer hover:shadow-md transition-shadow"
+                          >
+                            {cardContent}
+                          </Card>
+                        </Link>
+                      ) : (
+                        <Card
+                          key={item.id}
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, item.id)}
+                          className="cursor-grab active:cursor-grabbing shadow-sm"
+                        >
+                          {cardContent}
+                        </Card>
+                      );
+                    })}
                   </div>
                 </div>
               </div>

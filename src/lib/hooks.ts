@@ -21,6 +21,12 @@ import type {
   ShasCompletion,
   CompletionType,
   Quiz,
+  StoryCapture,
+  Goal,
+  DailyReflection,
+  GoalNote,
+  UsageEvent,
+  UserProfileEntry,
 } from '@/types';
 
 // Generic hook for fetching data from Supabase
@@ -659,4 +665,393 @@ export function useDeliveryJournal() {
   }
 
   return { entries: data, loading, addEntry, refetch };
+}
+
+// ===== Story Captures =====
+export function useStoryCaptures() {
+  const { data, loading, refetch, setData } = useSupabaseQuery<StoryCapture>('story_captures', {
+    orderBy: 'created_at',
+    ascending: false,
+  });
+
+  // Calculate stats
+  const stats = {
+    totalCaptures: data.length,
+    currentStreak: calculateStreak(data),
+    thisWeek: data.filter(c => {
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      return new Date(c.captured_date) >= weekAgo;
+    }).length,
+  };
+
+  async function addCapture(capture: Omit<StoryCapture, 'id' | 'created_at' | 'promoted_to_story_id'>) {
+    const { data: newCapture, error } = await supabase
+      .from('story_captures')
+      .insert(capture)
+      .select()
+      .single();
+    if (!error && newCapture) setData((prev) => [newCapture as StoryCapture, ...prev]);
+    return { error };
+  }
+
+  async function promoteToStory(captureId: string, storyId: string) {
+    const { error } = await supabase
+      .from('story_captures')
+      .update({ promoted_to_story_id: storyId })
+      .eq('id', captureId);
+    if (!error) {
+      setData((prev) =>
+        prev.map((c) => (c.id === captureId ? { ...c, promoted_to_story_id: storyId } : c))
+      );
+    }
+    return { error };
+  }
+
+  return { captures: data, loading, addCapture, promoteToStory, stats, refetch };
+}
+
+// ===== Goals =====
+export function useGoals() {
+  const { data, loading, refetch, setData } = useSupabaseQuery<Goal>('goals', {
+    orderBy: 'sort_order',
+    ascending: true,
+  });
+
+  const activeGoals = data.filter((g) => g.status === 'active');
+
+  async function addGoal(title: string, category: Goal['category'], description?: string, targetDate?: string) {
+    const { data: goal, error } = await supabase
+      .from('goals')
+      .insert({ title, category, description, target_date: targetDate })
+      .select()
+      .single();
+    if (!error && goal) setData((prev) => [...prev, goal as Goal]);
+    return { error };
+  }
+
+  async function updateGoalStatus(id: string, status: Goal['status']) {
+    const { error } = await supabase
+      .from('goals')
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq('id', id);
+    if (!error) {
+      setData((prev) =>
+        prev.map((g) => (g.id === id ? { ...g, status } : g))
+      );
+    }
+  }
+
+  return { goals: data, activeGoals, loading, addGoal, updateGoalStatus, refetch };
+}
+
+// ===== Daily Reflections =====
+export function useDailyReflection(date: string) {
+  const [reflection, setReflection] = useState<DailyReflection | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetch = useCallback(async () => {
+    if (!date) return;
+    setLoading(true);
+    const { data } = await supabase
+      .from('daily_reflections')
+      .select('*')
+      .eq('date', date)
+      .single();
+    setReflection((data as DailyReflection | null) || null);
+    setLoading(false);
+  }, [date]);
+
+  useEffect(() => { fetch(); }, [fetch]);
+
+  async function saveReflection(fields: {
+    wins?: string;
+    struggles?: string;
+    goal_notes?: GoalNote[];
+    gratitude?: string;
+    tomorrow_focus?: string;
+    growth_prompt?: string;
+    themes?: string[];
+  }) {
+    // Calculate streak
+    const yesterday = new Date(date);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    const { data: prevReflection } = await supabase
+      .from('daily_reflections')
+      .select('streak_count')
+      .eq('date', yesterdayStr)
+      .single();
+    const streakCount = prevReflection ? (prevReflection.streak_count || 0) + 1 : 1;
+
+    if (reflection) {
+      // Update existing
+      const { error } = await supabase
+        .from('daily_reflections')
+        .update({ ...fields, streak_count: streakCount })
+        .eq('id', reflection.id);
+      if (!error) setReflection({ ...reflection, ...fields, streak_count: streakCount });
+      return { error };
+    } else {
+      // Insert new
+      const { data, error } = await supabase
+        .from('daily_reflections')
+        .insert({ date, ...fields, streak_count: streakCount })
+        .select()
+        .single();
+      if (!error && data) setReflection(data as DailyReflection);
+      return { error };
+    }
+  }
+
+  return { reflection, loading, saveReflection, refetch: fetch };
+}
+
+export function useReflectionHistory(days: number = 7) {
+  const [reflections, setReflections] = useState<DailyReflection[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetch = useCallback(async () => {
+    setLoading(true);
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    const { data } = await supabase
+      .from('daily_reflections')
+      .select('*')
+      .gte('date', startDate.toISOString().split('T')[0])
+      .order('date', { ascending: false });
+    setReflections((data as DailyReflection[]) || []);
+    setLoading(false);
+  }, [days]);
+
+  useEffect(() => { fetch(); }, [fetch]);
+
+  return { reflections, loading, refetch: fetch };
+}
+
+// ===== Usage Tracking =====
+export async function logUsage(page: string, action: string = 'page_view', metadata?: Record<string, unknown>) {
+  await supabase.from('usage_events').insert({ page, action, metadata: metadata || {} });
+}
+
+export function useUsageStats(days: number = 7) {
+  const [stats, setStats] = useState<{ page: string; count: number }[]>([]);
+  const [lastVisits, setLastVisits] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(true);
+
+  const fetch = useCallback(async () => {
+    setLoading(true);
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+
+    const { data } = await supabase
+      .from('usage_events')
+      .select('page, created_at')
+      .eq('action', 'page_view')
+      .gte('created_at', startDate.toISOString())
+      .order('created_at', { ascending: false });
+
+    if (data) {
+      // Count page views
+      const counts: Record<string, number> = {};
+      const lastVisit: Record<string, string> = {};
+      for (const event of data) {
+        counts[event.page] = (counts[event.page] || 0) + 1;
+        if (!lastVisit[event.page]) lastVisit[event.page] = event.created_at;
+      }
+      setStats(Object.entries(counts).map(([page, count]) => ({ page, count })));
+      setLastVisits(lastVisit);
+    }
+    setLoading(false);
+  }, [days]);
+
+  useEffect(() => { fetch(); }, [fetch]);
+
+  return { stats, lastVisits, loading };
+}
+
+// ===== User Profile =====
+export function useUserProfile() {
+  const [profile, setProfile] = useState<Record<string, unknown>>({});
+  const [loading, setLoading] = useState(true);
+
+  const fetch = useCallback(async () => {
+    setLoading(true);
+    const { data } = await supabase.from('user_profile').select('*');
+    if (data) {
+      const profileMap: Record<string, unknown> = {};
+      for (const entry of data as UserProfileEntry[]) {
+        profileMap[entry.key] = entry.value;
+      }
+      setProfile(profileMap);
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { fetch(); }, [fetch]);
+
+  return { profile, loading, refetch: fetch };
+}
+
+// ===== Dashboard Nudges =====
+export interface DashboardNudge {
+  type: 'practice' | 'story' | 'ritual' | 'reflection' | 'event' | 'goal';
+  message: string;
+  action: string; // URL to navigate to
+  priority: number; // lower = higher priority
+}
+
+export function useDashboardNudges() {
+  const [nudges, setNudges] = useState<DashboardNudge[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetch = useCallback(async () => {
+    setLoading(true);
+    const today = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const hour = now.getHours();
+    const result: DashboardNudge[] = [];
+
+    // Check upcoming events (within 3 days)
+    const threeDaysOut = new Date();
+    threeDaysOut.setDate(threeDaysOut.getDate() + 3);
+    const { data: events } = await supabase
+      .from('events')
+      .select('title, start_time')
+      .gte('start_time', now.toISOString())
+      .lte('start_time', threeDaysOut.toISOString())
+      .order('start_time', { ascending: true })
+      .limit(1);
+
+    if (events && events.length > 0) {
+      const event = events[0];
+      const eventDate = new Date(event.start_time);
+      const daysUntil = Math.ceil((eventDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      const dayText = daysUntil === 0 ? 'today' : daysUntil === 1 ? 'tomorrow' : `in ${daysUntil} days`;
+      result.push({
+        type: 'event',
+        message: `${event.title} is ${dayText} — time to prepare`,
+        action: '/pipeline',
+        priority: 1,
+      });
+    }
+
+    // Check pipeline items in practice stage with no recent practice logs
+    const { data: practiceItems } = await supabase
+      .from('pipeline_items')
+      .select('title, document_slug')
+      .eq('stage', 'practice')
+      .limit(1);
+
+    if (practiceItems && practiceItems.length > 0) {
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      const { data: recentLogs } = await supabase
+        .from('practice_logs')
+        .select('id')
+        .gte('date', weekAgo.toISOString().split('T')[0])
+        .limit(1);
+
+      if (!recentLogs || recentLogs.length === 0) {
+        result.push({
+          type: 'practice',
+          message: `"${practiceItems[0].title}" needs rehearsal`,
+          action: '/practice',
+          priority: 2,
+        });
+      }
+    }
+
+    // Check rituals for today
+    const { data: rituals } = await supabase
+      .from('rituals')
+      .select('id')
+      .eq('active', true);
+    const { data: completions } = await supabase
+      .from('ritual_completions')
+      .select('ritual_id')
+      .eq('completed_date', today);
+
+    if (rituals && completions && completions.length < rituals.length) {
+      const remaining = rituals.length - completions.length;
+      result.push({
+        type: 'ritual',
+        message: `${remaining} ritual${remaining > 1 ? 's' : ''} waiting for you`,
+        action: '/growth/daily',
+        priority: 3,
+      });
+    }
+
+    // Check story capture (no capture in 3+ days)
+    const threeDaysAgo = new Date();
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+    const { data: recentCaptures } = await supabase
+      .from('story_captures')
+      .select('id')
+      .gte('captured_date', threeDaysAgo.toISOString().split('T')[0])
+      .limit(1);
+
+    if (!recentCaptures || recentCaptures.length === 0) {
+      result.push({
+        type: 'story',
+        message: 'Capture a moment — 2 minutes',
+        action: '/stories/capture',
+        priority: 4,
+      });
+    }
+
+    // Check evening reflection (after 5pm, no reflection today)
+    if (hour >= 17) {
+      const { data: todayReflection } = await supabase
+        .from('daily_reflections')
+        .select('id')
+        .eq('date', today)
+        .limit(1);
+
+      if (!todayReflection || todayReflection.length === 0) {
+        result.push({
+          type: 'reflection',
+          message: 'Take 5 minutes to reflect on your day',
+          action: '/growth/daily',
+          priority: 2,
+        });
+      }
+    }
+
+    // Sort by priority and take top 3
+    result.sort((a, b) => a.priority - b.priority);
+    setNudges(result.slice(0, 3));
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { fetch(); }, [fetch]);
+
+  return { nudges, loading };
+}
+
+// Helper to calculate streak
+function calculateStreak(captures: StoryCapture[]): number {
+  if (captures.length === 0) return 0;
+
+  const dates = [...new Set(captures.map(c => c.captured_date))].sort().reverse();
+  const today = new Date().toISOString().split('T')[0];
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+
+  // Must have captured today or yesterday to have a streak
+  if (dates[0] !== today && dates[0] !== yesterday) return 0;
+
+  let streak = 0;
+  let checkDate = new Date(dates[0]);
+
+  for (const date of dates) {
+    const expectedDate = checkDate.toISOString().split('T')[0];
+    if (date === expectedDate) {
+      streak++;
+      checkDate.setDate(checkDate.getDate() - 1);
+    } else {
+      break;
+    }
+  }
+
+  return streak;
 }

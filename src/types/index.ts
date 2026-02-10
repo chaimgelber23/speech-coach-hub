@@ -1,10 +1,13 @@
 // ===== Database Types =====
 
+export type DocumentFolder = 'parsha' | 'mishna' | 'mitzvos' | 'courses' | 'speeches';
+
 export interface ResearchDocument {
   id: string;
   title: string;
   slug: string;
   category: 'mitzvah' | 'course' | 'draft' | 'speech';
+  folder: DocumentFolder | null;
   content: string;
   sections: Section[];
   status: 'research' | 'prep' | 'session' | 'practice' | 'complete';
@@ -12,6 +15,14 @@ export interface ResearchDocument {
   created_at: string;
   updated_at: string;
 }
+
+export const FOLDER_CONFIG: { key: DocumentFolder; label: string; icon: string; color: string }[] = [
+  { key: 'parsha', label: 'Parsha', icon: '📜', color: 'bg-amber-100 text-amber-800 border-amber-300' },
+  { key: 'mishna', label: 'Mishna', icon: '📖', color: 'bg-blue-100 text-blue-800 border-blue-300' },
+  { key: 'mitzvos', label: 'Mitzvos', icon: '✡️', color: 'bg-purple-100 text-purple-800 border-purple-300' },
+  { key: 'courses', label: 'Courses', icon: '🎓', color: 'bg-green-100 text-green-800 border-green-300' },
+  { key: 'speeches', label: 'Speeches', icon: '🎤', color: 'bg-orange-100 text-orange-800 border-orange-300' },
+];
 
 export interface Section {
   id: string;
@@ -38,6 +49,7 @@ export interface PipelineItem {
   stage: 'idea' | 'research' | 'draft' | 'practice' | 'ready' | 'delivered';
   content_type: string | null;
   document_id: string | null;
+  document_slug: string | null;
   audience: string | null;
   target_date: string | null;
   created_at: string;
@@ -138,6 +150,17 @@ export interface Question {
   created_at: string;
 }
 
+export interface StoryCapture {
+  id: string;
+  prompt_day: number;
+  prompt_text: string;
+  response: string;
+  emotion: string | null;
+  captured_date: string;
+  promoted_to_story_id: string | null;
+  created_at: string;
+}
+
 export interface PracticeLog {
   id: string;
   pipeline_id: string | null;
@@ -197,6 +220,68 @@ export const SEDER_CONFIG: { key: Seder; label: string; color: string }[] = [
   { key: 'kodshim', label: 'Kodshim', color: 'bg-orange-100 text-orange-800 border-orange-300' },
   { key: 'taharos', label: 'Taharos', color: 'bg-teal-100 text-teal-800 border-teal-300' },
 ];
+
+// ===== Goals =====
+
+export interface Goal {
+  id: string;
+  title: string;
+  category: 'spiritual' | 'personal' | 'professional' | 'learning';
+  description: string | null;
+  target_date: string | null;
+  status: 'active' | 'paused' | 'completed';
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export const GOAL_CATEGORIES: { key: Goal['category']; label: string; color: string }[] = [
+  { key: 'spiritual', label: 'Spiritual', color: 'bg-indigo-100 text-indigo-800 border-indigo-300' },
+  { key: 'personal', label: 'Personal', color: 'bg-rose-100 text-rose-800 border-rose-300' },
+  { key: 'professional', label: 'Professional', color: 'bg-sky-100 text-sky-800 border-sky-300' },
+  { key: 'learning', label: 'Learning', color: 'bg-teal-100 text-teal-800 border-teal-300' },
+];
+
+// ===== Daily Reflections (Cheshbon HaNefesh) =====
+
+export interface GoalNote {
+  goal_id: string;
+  note: string;
+  rating: number; // 1-5
+}
+
+export interface DailyReflection {
+  id: string;
+  date: string;
+  wins: string | null;
+  struggles: string | null;
+  goal_notes: GoalNote[];
+  gratitude: string | null;
+  tomorrow_focus: string | null;
+  growth_prompt: string | null;
+  themes: string[];
+  streak_count: number;
+  created_at: string;
+}
+
+// ===== Usage Tracking =====
+
+export interface UsageEvent {
+  id: string;
+  page: string;
+  action: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+// ===== User Profile =====
+
+export interface UserProfileEntry {
+  id: string;
+  key: string;
+  value: unknown;
+  updated_at: string;
+}
 
 // ===== Quizzes =====
 
