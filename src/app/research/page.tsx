@@ -27,6 +27,7 @@ const categoryConfig: Record<string, { label: string; accent: string; bg: string
   course: { label: 'Course', accent: 'border-l-green-400', bg: 'text-green-600' },
   draft: { label: 'Draft', accent: 'border-l-slate-400', bg: 'text-slate-600' },
   speech: { label: 'Speech', accent: 'border-l-orange-400', bg: 'text-orange-600' },
+  parsha: { label: 'Parsha', accent: 'border-l-amber-400', bg: 'text-amber-600' },
 };
 
 export default function ResearchPage() {
@@ -51,11 +52,11 @@ export default function ResearchPage() {
   return (
     <div className="max-w-5xl mx-auto">
       <Header
-        title="Research Documents"
-        description="Your research, prep, and session documents"
+        title="Torah Library"
+        description="Your parsha, mitzvos, speeches, courses, and drafts"
         action={
           <AddDialog
-            title="New Research Document"
+            title="New Document"
             buttonLabel="New Document"
             fields={[
               { name: 'title', label: 'Title', type: 'text', required: true, placeholder: 'e.g. Shabbos Candles' },
@@ -65,17 +66,17 @@ export default function ResearchPage() {
                 type: 'select',
                 required: true,
                 options: [
+                  { value: 'parsha', label: 'Parsha' },
                   { value: 'mitzvah', label: 'Mitzvah' },
-                  { value: 'course', label: 'Course' },
-                  { value: 'draft', label: 'Draft' },
                   { value: 'speech', label: 'Speech' },
+                  { value: 'course', label: 'Course' },
                 ],
               },
             ]}
             onSubmit={async (values) => {
               const { error } = await createResearchDocument(
                 values.title,
-                values.category as 'mitzvah' | 'course' | 'draft' | 'speech'
+                values.category as 'mitzvah' | 'course' | 'draft' | 'speech' | 'parsha'
               );
               if (!error) refetch();
               return { error };
@@ -96,7 +97,7 @@ export default function ResearchPage() {
           />
         </div>
         <div className="flex gap-1 flex-wrap">
-          {['all', 'mitzvah', 'course', 'draft', 'speech'].map((cat) => {
+          {['all', 'parsha', 'mitzvah', 'speech', 'course', 'draft'].map((cat) => {
             const count = categoryCounts[cat] || 0;
             const config = categoryConfig[cat];
             return (

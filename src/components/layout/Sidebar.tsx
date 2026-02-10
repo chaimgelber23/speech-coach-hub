@@ -24,7 +24,7 @@ import NotificationManager from '@/components/NotificationManager';
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/research', label: 'Research', icon: FileText },
+  { href: '/research', label: 'Torah Library', icon: FileText },
   { href: '/pipeline', label: 'Pipeline', icon: Kanban },
   { href: '/calendar', label: 'Calendar', icon: Calendar },
   { href: '/tasks', label: 'Tasks', icon: ListTodo },

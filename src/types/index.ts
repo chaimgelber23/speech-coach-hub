@@ -6,7 +6,7 @@ export interface ResearchDocument {
   id: string;
   title: string;
   slug: string;
-  category: 'mitzvah' | 'course' | 'draft' | 'speech';
+  category: 'mitzvah' | 'course' | 'draft' | 'speech' | 'parsha';
   folder: DocumentFolder | null;
   content: string;
   sections: Section[];
