@@ -105,7 +105,7 @@ async function importParsha(parshaName) {
         .upsert({
           title,
           slug,
-          category: 'speech',
+          category: 'parsha',
           content,
           status: 'practice',
           topic_slug: topicSlug,
@@ -132,7 +132,7 @@ async function importParsha(parshaName) {
         .upsert({
           title,
           slug,
-          category: 'speech',
+          category: 'parsha',
           content,
           status: 'research',
           topic_slug: topicSlug,
