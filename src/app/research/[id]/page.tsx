@@ -135,7 +135,7 @@ export default function ResearchDocPage() {
           />
         </div>
         {doc.pdf_path && (
-          <a href={`/api/pdf/${doc.pdf_path}`} target="_blank" rel="noopener noreferrer">
+          <a href={doc.pdf_path} target="_blank" rel="noopener noreferrer">
             <Button variant="outline" size="sm" className="text-red-600 border-red-200 hover:bg-red-50">
               <FileDown size={16} className="mr-1" /> View PDF
             </Button>
