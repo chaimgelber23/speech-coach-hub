@@ -43,6 +43,9 @@ export default function CommentPanel({
   const [newType, setNewType] = useState<Comment['comment_type']>('note');
   const [isAdding, setIsAdding] = useState(false);
   const prevSectionRef = useRef(selectedSection);
+  const formRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const prevCommentsLenRef = useRef(comments.length);
 
   // Auto-open comment form when a new section is selected
   useEffect(() => {
@@ -53,6 +56,23 @@ export default function CommentPanel({
     }
     prevSectionRef.current = selectedSection;
   }, [selectedSection]);
+
+  // Scroll form into view when it opens
+  useEffect(() => {
+    if (isAdding && formRef.current) {
+      requestAnimationFrame(() => {
+        formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      });
+    }
+  }, [isAdding]);
+
+  // Scroll to latest comment when a new one is added
+  useEffect(() => {
+    if (comments.length > prevCommentsLenRef.current && bottomRef.current) {
+      bottomRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    prevCommentsLenRef.current = comments.length;
+  }, [comments.length]);
 
   function handleSubmit() {
     if (!selectedSection || !newComment.trim()) return;
@@ -120,11 +140,13 @@ export default function CommentPanel({
           </div>
         ))}
 
+        <div ref={bottomRef} />
+
         {/* Add Comment */}
         {selectedSection && (
           <>
             {isAdding ? (
-              <div className="border rounded-lg p-3 space-y-2">
+              <div ref={formRef} className="border rounded-lg p-3 space-y-2">
                 <Select
                   value={newType}
                   onValueChange={(v) => setNewType(v as Comment['comment_type'])}

@@ -12,6 +12,7 @@ export interface ResearchDocument {
   sections: Section[];
   status: 'research' | 'prep' | 'session' | 'practice' | 'complete';
   topic_slug: string | null;
+  pdf_path: string | null;
   created_at: string;
   updated_at: string;
 }

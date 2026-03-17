@@ -4,7 +4,7 @@ import Header from '@/components/layout/Header';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search } from 'lucide-react';
+import { Search, FileText } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { useTopicGroups, createResearchDocument } from '@/lib/hooks';
@@ -166,8 +166,9 @@ export default function ResearchPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((group) => {
-            const primaryDoc = group.documents.find((d) => d.status === 'research') || group.documents[0];
+            const primaryDoc = group.documents.find((d) => d.status === 'practice') || group.documents.find((d) => d.status === 'session') || group.documents[0];
             const catConfig = categoryConfig[group.category];
+            const hasPdf = group.documents.some((d) => d.pdf_path);
             const existingStatuses = new Set(group.documents.map((d) => d.status));
             // Find the furthest stage reached
             const furthestStage = [...STAGES].reverse().find((s) => existingStatuses.has(s)) || 'research';
@@ -185,9 +186,14 @@ export default function ResearchPage() {
                     </span>
 
                     {/* Title */}
-                    <h3 className="text-[15px] font-semibold text-slate-900 mt-1 mb-3 leading-snug">
-                      {group.title}
-                    </h3>
+                    <div className="flex items-center gap-1.5 mt-1 mb-3">
+                      <h3 className="text-[15px] font-semibold text-slate-900 leading-snug">
+                        {group.title}
+                      </h3>
+                      {hasPdf && (
+                        <span title="Has PDF"><FileText size={14} className="text-red-500 shrink-0" /></span>
+                      )}
+                    </div>
 
                     {/* Stage progress stepper */}
                     <div className="flex items-center gap-1 mb-3">

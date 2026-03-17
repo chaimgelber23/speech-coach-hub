@@ -3,18 +3,14 @@
 import Header from '@/components/layout/Header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Progress } from '@/components/ui/progress';
 import {
   Calendar,
   CheckCircle2,
   BookOpen,
   Kanban,
   ListTodo,
-  Sparkles,
   ArrowRight,
   Mic,
-  BookOpenCheck,
   PenLine,
   Target,
   Zap,
@@ -22,38 +18,20 @@ import {
 import Link from 'next/link';
 import { format, isFuture, isToday, parseISO } from 'date-fns';
 import {
-  useRituals,
-  useRitualCompletions,
   useEvents,
   useTasks,
   usePipeline,
   useGoals,
-  usePracticeLogs,
-  useStoryCaptures,
   useDashboardNudges,
 } from '@/lib/hooks';
-import { PIPELINE_STAGES } from '@/types';
+import { PIPELINE_STAGES, GOAL_CATEGORIES } from '@/types';
 
 export default function Dashboard() {
-  const today = format(new Date(), 'yyyy-MM-dd');
-  const { rituals, loading: ritualsLoading } = useRituals();
-  const { completions, toggleCompletion } = useRitualCompletions(today);
   const { events, loading: eventsLoading } = useEvents();
   const { tasks, loading: tasksLoading } = useTasks();
   const { items: pipelineItems, loading: pipelineLoading } = usePipeline();
   const { activeGoals } = useGoals();
-  const { logs: practiceLogs } = usePracticeLogs();
-  const { stats: captureStats } = useStoryCaptures();
   const { nudges, loading: nudgesLoading } = useDashboardNudges();
-
-  const activeRituals = rituals.filter((r) => r.active);
-  const completedRitualIds = new Set(completions.map((c) => c.ritual_id));
-  const completedCount = activeRituals.filter((r) => completedRitualIds.has(r.id)).length;
-
-  // Practice sessions this week
-  const weekAgo = new Date();
-  weekAgo.setDate(weekAgo.getDate() - 7);
-  const practiceThisWeek = practiceLogs.filter((l) => new Date(l.date) >= weekAgo).length;
 
   // Upcoming events (today or future, max 3)
   const upcomingEvents = events
@@ -78,12 +56,10 @@ export default function Dashboard() {
     count: pipelineItems.filter((item) => item.stage === stage.key).length,
   }));
 
-  // Nudge icons + colors
+  // Nudge styles
   const nudgeStyle: Record<string, { color: string; bg: string }> = {
     event: { color: 'text-blue-600', bg: 'bg-blue-50 border-blue-200' },
     practice: { color: 'text-purple-600', bg: 'bg-purple-50 border-purple-200' },
-    ritual: { color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200' },
-    reflection: { color: 'text-indigo-600', bg: 'bg-indigo-50 border-indigo-200' },
     story: { color: 'text-teal-600', bg: 'bg-teal-50 border-teal-200' },
     goal: { color: 'text-rose-600', bg: 'bg-rose-50 border-rose-200' },
   };
@@ -95,7 +71,7 @@ export default function Dashboard() {
         description={format(new Date(), 'EEEE, MMMM d, yyyy')}
       />
 
-      {/* Today's Focus — the hero section */}
+      {/* Today's Focus — nudges */}
       {!nudgesLoading && nudges.length > 0 && (
         <Card className="mb-6 border-2 border-slate-200 bg-gradient-to-r from-slate-50 to-white">
           <CardHeader className="pb-2">
@@ -125,6 +101,16 @@ export default function Dashboard() {
 
       {/* Quick Actions */}
       <div className="grid grid-cols-4 gap-3 mb-6">
+        <Link href="/research">
+          <Card className="hover:shadow-md transition-all cursor-pointer hover:border-amber-300">
+            <CardContent className="p-3 flex flex-col items-center gap-1.5">
+              <div className="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center">
+                <BookOpen size={16} className="text-amber-600" />
+              </div>
+              <span className="text-xs font-medium text-slate-600">Torah Library</span>
+            </CardContent>
+          </Card>
+        </Link>
         <Link href="/practice">
           <Card className="hover:shadow-md transition-all cursor-pointer hover:border-purple-300">
             <CardContent className="p-3 flex flex-col items-center gap-1.5">
@@ -145,122 +131,57 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </Link>
-        <Link href="/tasks">
-          <Card className="hover:shadow-md transition-all cursor-pointer hover:border-green-300">
+        <Link href="/growth">
+          <Card className="hover:shadow-md transition-all cursor-pointer hover:border-rose-300">
             <CardContent className="p-3 flex flex-col items-center gap-1.5">
-              <div className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center">
-                <ListTodo size={16} className="text-green-600" />
+              <div className="w-9 h-9 rounded-full bg-rose-100 flex items-center justify-center">
+                <Target size={16} className="text-rose-600" />
               </div>
-              <span className="text-xs font-medium text-slate-600">Add Task</span>
-            </CardContent>
-          </Card>
-        </Link>
-        <Link href="/growth/daily">
-          <Card className="hover:shadow-md transition-all cursor-pointer hover:border-indigo-300">
-            <CardContent className="p-3 flex flex-col items-center gap-1.5">
-              <div className="w-9 h-9 rounded-full bg-indigo-100 flex items-center justify-center">
-                <BookOpenCheck size={16} className="text-indigo-600" />
-              </div>
-              <span className="text-xs font-medium text-slate-600">Reflect</span>
+              <span className="text-xs font-medium text-slate-600">Goals</span>
             </CardContent>
           </Card>
         </Link>
       </div>
 
-      {/* Daily Progress Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        <Card>
-          <CardContent className="p-3">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xs text-slate-500">Rituals</span>
-              <Sparkles size={14} className="text-amber-500" />
-            </div>
-            <div className="flex items-baseline gap-1">
-              <span className="text-xl font-bold text-slate-800">{completedCount}</span>
-              <span className="text-xs text-slate-400">/ {activeRituals.length}</span>
-            </div>
-            <Progress value={activeRituals.length > 0 ? (completedCount / activeRituals.length) * 100 : 0} className="h-1 mt-1.5" />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xs text-slate-500">Story Streak</span>
-              <PenLine size={14} className="text-teal-500" />
-            </div>
-            <div className="flex items-baseline gap-1">
-              <span className="text-xl font-bold text-slate-800">{captureStats.currentStreak}</span>
-              <span className="text-xs text-slate-400">days</span>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xs text-slate-500">Practice</span>
-              <Mic size={14} className="text-purple-500" />
-            </div>
-            <div className="flex items-baseline gap-1">
-              <span className="text-xl font-bold text-slate-800">{practiceThisWeek}</span>
-              <span className="text-xs text-slate-400">this week</span>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xs text-slate-500">Goals</span>
-              <Target size={14} className="text-rose-500" />
-            </div>
-            <div className="flex items-baseline gap-1">
-              <span className="text-xl font-bold text-slate-800">{activeGoals.length}</span>
-              <span className="text-xs text-slate-400">active</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Main Grid: existing cards, compacted */}
+      {/* Main Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Today's Rituals */}
+        {/* Goals — what I'm working on */}
         <Card>
           <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Sparkles size={16} className="text-amber-500" />
-                Daily Rituals
-              </CardTitle>
-              <span className="text-xs text-slate-500">
-                {completedCount}/{activeRituals.length}
-              </span>
-            </div>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Target size={16} className="text-rose-500" />
+              What I&apos;m Working On
+            </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
-            {ritualsLoading ? (
-              <p className="text-xs text-slate-400">Loading...</p>
-            ) : activeRituals.length === 0 ? (
-              <p className="text-xs text-slate-400">No rituals defined yet.</p>
+          <CardContent className="space-y-3">
+            {activeGoals.length === 0 ? (
+              <p className="text-xs text-slate-400">No active goals yet.</p>
             ) : (
-              activeRituals.slice(0, 5).map((ritual) => (
-                <label
-                  key={ritual.id}
-                  className="flex items-center gap-2 text-sm cursor-pointer"
-                >
-                  <Checkbox
-                    checked={completedRitualIds.has(ritual.id)}
-                    onCheckedChange={() => toggleCompletion(ritual.id)}
-                  />
-                  <span className={completedRitualIds.has(ritual.id) ? 'line-through text-slate-400' : ''}>
-                    {ritual.name}
-                  </span>
-                </label>
-              ))
+              activeGoals.slice(0, 4).map((goal) => {
+                const cat = GOAL_CATEGORIES.find((c) => c.key === goal.category);
+                return (
+                  <div key={goal.id} className="flex items-start gap-2">
+                    <Target size={14} className="text-rose-400 shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <span className="text-sm font-medium">{goal.title}</span>
+                      {goal.description && (
+                        <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{goal.description}</p>
+                      )}
+                    </div>
+                    {cat && (
+                      <Badge variant="outline" className={`text-xs ${cat.color}`}>
+                        {cat.label}
+                      </Badge>
+                    )}
+                  </div>
+                );
+              })
             )}
             <Link
-              href="/growth/daily"
+              href="/growth"
               className="text-xs text-blue-600 hover:underline flex items-center gap-1 mt-2"
             >
-              Go to My Daily <ArrowRight size={12} />
+              Manage goals <ArrowRight size={12} />
             </Link>
           </CardContent>
         </Card>

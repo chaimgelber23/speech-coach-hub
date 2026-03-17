@@ -90,8 +90,8 @@ export default function GrowthPage() {
   return (
     <div className="max-w-5xl mx-auto">
       <Header
-        title="Personal Growth"
-        description="Track your daily rituals, goals, and development"
+        title="Goals & Growth"
+        description="What you're working on and where you're headed"
         action={
           <AddDialog
             title="Add Ritual"
@@ -135,11 +135,11 @@ export default function GrowthPage() {
         </Card>
       </Link>
 
-      <Tabs defaultValue="rituals">
+      <Tabs defaultValue="goals">
         <TabsList className="mb-6">
-          <TabsTrigger value="rituals">Daily Rituals</TabsTrigger>
-          <TabsTrigger value="courses">Courses</TabsTrigger>
           <TabsTrigger value="goals">Goals</TabsTrigger>
+          <TabsTrigger value="courses">Courses</TabsTrigger>
+          <TabsTrigger value="rituals">Rituals</TabsTrigger>
           <TabsTrigger value="review">Weekly Review</TabsTrigger>
         </TabsList>
 

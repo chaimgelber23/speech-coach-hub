@@ -3,7 +3,7 @@
 import Header from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Edit3, Eye, BrainCircuit, MessageSquare, Send } from 'lucide-react';
+import { ArrowLeft, Edit3, Eye, BrainCircuit, MessageSquare, Send, PanelRight, PanelRightClose, FileDown } from 'lucide-react';
 import Link from 'next/link';
 import { useState, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -40,6 +40,7 @@ export default function ResearchDocPage() {
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [rightPanel, setRightPanel] = useState<'comments' | 'quiz'>('comments');
+  const [showRightPanel, setShowRightPanel] = useState(true);
   const [sendingToClaude, setSendingToClaude] = useState(false);
   const [sendSuccess, setSendSuccess] = useState(false);
   const commentPanelRef = useRef<HTMLDivElement>(null);
@@ -68,9 +69,7 @@ export default function ResearchDocPage() {
   const handleSelectSection = useCallback((id: string) => {
     setSelectedSection(id);
     setRightPanel('comments');
-    setTimeout(() => {
-      commentPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }, 50);
+    setShowRightPanel(true);
   }, []);
 
   const sectionCommentCounts: Record<string, number> = {};
@@ -135,6 +134,13 @@ export default function ResearchDocPage() {
             description={FILE_TYPE_LABELS[doc.status] || doc.status}
           />
         </div>
+        {doc.pdf_path && (
+          <a href={`/api/pdf/${doc.pdf_path}`} target="_blank" rel="noopener noreferrer">
+            <Button variant="outline" size="sm" className="text-red-600 border-red-200 hover:bg-red-50">
+              <FileDown size={16} className="mr-1" /> View PDF
+            </Button>
+          </a>
+        )}
         <Button
           variant={isEditing ? 'default' : 'outline'}
           size="sm"
@@ -175,6 +181,14 @@ export default function ResearchDocPage() {
         >
           <Send size={16} className="mr-1" />
           {sendingToClaude ? 'Sending...' : sendSuccess ? 'Sent!' : 'Send to Claude'}
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowRightPanel(!showRightPanel)}
+          title={showRightPanel ? 'Hide notes panel' : 'Show notes panel'}
+        >
+          {showRightPanel ? <PanelRightClose size={16} /> : <PanelRight size={16} />}
         </Button>
         <Badge variant="outline">
           {comments.filter((c) => !c.resolved).length} open comments
@@ -237,20 +251,22 @@ export default function ResearchDocPage() {
         </div>
 
         {/* Right Panel: Comments or Quiz */}
-        <div className="w-80 shrink-0 hidden md:block">
-          <div ref={commentPanelRef} className="sticky top-6 max-h-[calc(100vh-3rem)] overflow-y-auto">
-            {rightPanel === 'comments' ? (
-              <CommentPanel
-                comments={sectionComments}
-                selectedSection={selectedSection}
-                onAddComment={addComment}
-                onResolveComment={resolveComment}
-              />
-            ) : (
-              <QuizPanel documentId={doc.id} />
-            )}
+        {showRightPanel && (
+          <div className="w-80 shrink-0 hidden md:block">
+            <div ref={commentPanelRef} className="sticky top-6 max-h-[calc(100vh-3rem)] overflow-y-auto">
+              {rightPanel === 'comments' ? (
+                <CommentPanel
+                  comments={sectionComments}
+                  selectedSection={selectedSection}
+                  onAddComment={addComment}
+                  onResolveComment={resolveComment}
+                />
+              ) : (
+                <QuizPanel documentId={doc.id} />
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
