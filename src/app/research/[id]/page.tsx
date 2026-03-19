@@ -3,7 +3,7 @@
 import Header from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Edit3, Eye, BrainCircuit, MessageSquare, Send, PanelRight, PanelRightClose, FileDown } from 'lucide-react';
+import { ArrowLeft, Edit3, Eye, BrainCircuit, MessageSquare, Send, PanelRight, PanelRightClose, FileDown, Printer } from 'lucide-react';
 import Link from 'next/link';
 import { useState, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -44,6 +44,21 @@ export default function ResearchDocPage() {
   const [sendingToClaude, setSendingToClaude] = useState(false);
   const [sendSuccess, setSendSuccess] = useState(false);
   const commentPanelRef = useRef<HTMLDivElement>(null);
+
+  const handlePrint = useCallback(() => {
+    if (doc?.pdf_path) {
+      // For PDFs: open in new window and print just the PDF
+      const printWindow = window.open(doc.pdf_path, '_blank');
+      if (printWindow) {
+        printWindow.addEventListener('load', () => {
+          printWindow.print();
+        });
+      }
+    } else {
+      // For text content: use print styles to print only the document
+      window.print();
+    }
+  }, [doc]);
 
   const sendToClaude = useCallback(async () => {
     if (!doc || comments.length === 0) return;
@@ -122,7 +137,7 @@ export default function ResearchDocPage() {
   return (
     <div className="max-w-full mx-auto">
       {/* Top bar: back + title + actions */}
-      <div className="flex items-center gap-3 mb-2">
+      <div className="flex items-center gap-3 mb-2" data-no-print>
         <Link href="/research">
           <Button variant="ghost" size="sm">
             <ArrowLeft size={16} className="mr-1" /> Back
@@ -141,6 +156,14 @@ export default function ResearchDocPage() {
             </Button>
           </a>
         )}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handlePrint}
+          title={doc.pdf_path ? 'Print PDF' : 'Print content'}
+        >
+          <Printer size={16} className="mr-1" /> Print
+        </Button>
         <Button
           variant={isEditing ? 'default' : 'outline'}
           size="sm"
@@ -197,7 +220,7 @@ export default function ResearchDocPage() {
 
       {/* File type tabs */}
       {sortedSiblings.length > 1 && (
-        <div className="flex gap-1 mb-4 ml-16">
+        <div className="flex gap-1 mb-4 ml-16" data-no-print>
           {sortedSiblings.map((sibling) => {
             const isActive = sibling.slug === slug;
             return (
@@ -224,7 +247,7 @@ export default function ResearchDocPage() {
 
       <div className="flex gap-4">
         {/* Table of Contents */}
-        <div className="w-48 shrink-0 hidden lg:block">
+        <div className="w-48 shrink-0 hidden lg:block" data-no-print>
           <SectionNav
             content={doc.content}
             selectedSection={selectedSection}
@@ -234,7 +257,7 @@ export default function ResearchDocPage() {
         </div>
 
         {/* Document Content */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0" data-print-content>
           {isEditing ? (
             <DocumentEditor
               content={doc.content}
@@ -252,7 +275,7 @@ export default function ResearchDocPage() {
 
         {/* Right Panel: Comments or Quiz */}
         {showRightPanel && (
-          <div className="w-80 shrink-0 hidden md:block">
+          <div className="w-80 shrink-0 hidden md:block" data-no-print>
             <div ref={commentPanelRef} className="sticky top-6 max-h-[calc(100vh-3rem)] overflow-y-auto">
               {rightPanel === 'comments' ? (
                 <CommentPanel

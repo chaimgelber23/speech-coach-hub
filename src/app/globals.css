@@ -123,3 +123,46 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Print styles - only show document content */
+@media print {
+  /* Hide everything by default */
+  body > * {
+    visibility: hidden;
+  }
+
+  /* Show only the printable area */
+  [data-print-content],
+  [data-print-content] * {
+    visibility: visible !important;
+  }
+
+  [data-print-content] {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 2rem;
+  }
+
+  /* Hide sidebar, nav, action bar, comments panel, section nav */
+  nav,
+  aside,
+  [data-no-print],
+  .flex.min-h-screen > :first-child {
+    display: none !important;
+  }
+
+  /* Remove main area padding/background */
+  .flex.min-h-screen > main {
+    padding: 0 !important;
+    background: white !important;
+  }
+
+  /* Clean up card styling for print */
+  [data-print-content] .rounded-xl,
+  [data-print-content] .rounded-lg {
+    border: none !important;
+    box-shadow: none !important;
+  }
+}
